@@ -44,6 +44,13 @@
 ).
 
 
+% Endpoint used to reset mocked rest endpoint history.
+-define(RESET_REST_HISTORY_PATH, "/reset_rest_history").
+% No data is required to be sent
+-define(RESET_REST_HISTORY_PACK_REQUEST, []).
+
+
+
 -define(REST_ENDPOINT_REQUEST_COUNT_PATH, "/rest_endpoint_request_count").
 % Creates a term that is sent as JSON to verify_rest_endpoint endpoint (client side).
 -define(REST_ENDPOINT_REQUEST_COUNT_REQUEST(_Port, _Path),
@@ -134,3 +141,32 @@
         [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}] -> {error, wrong_endpoint}
     end
 ).
+
+
+% Endpoint used to reset mocked TCP endpoint history.
+-define(RESET_TCP_HISTORY_PATH, "/reset_tcp_history").
+% No data is required to be sent
+-define(RESET_TCP_HISTORY_PACK_REQUEST, []).
+
+
+% Endpoint used to check number of client connections.
+-define(TCP_SERVER_CONNECTION_COUNT_PATH(_Port), "/tcp_server_connection_count/" ++ integer_to_list(_Port)).
+-define(TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, "/tcp_server_connection_count/:port").
+% No data is required to be sent
+-define(TCP_SERVER_CONNECTION_COUNT_PACK_REQUEST, []).
+% Produces success message which carries information of request count.
+-define(TCP_SERVER_CONNECTION_COUNT_PACK_RESPONSE(_Count),
+    [{<<"result">>, _Count}]
+).
+% Produces an error message if the tcp server requested to be verified does not exist (server side).
+-define(TCP_SERVER_CONNECTION_COUNT_PACK_ERROR_WRONG_ENDPOINT,
+    [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}]).
+% Retrieves the response from appmock server (client side).
+-define(TCP_SERVER_CONNECTION_COUNT_UNPACK_RESPONSE(_RespBody),
+    case _RespBody of
+        [{<<"result">>, _Count}] -> {ok, _Count};
+        [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}] -> {error, wrong_endpoint}
+    end
+).
+
+
