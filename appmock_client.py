@@ -108,7 +108,7 @@ def tcp_server_wait_for_messages(appmock_ip, tcp_port, data, number_of_messages,
 
     def check_mess_num(wait_for):
         result = tcp_server_message_count(appmock_ip, tcp_port, data)
-        if result == number_of_messages:
+        if result >= number_of_messages:
             return
         elif (time.clock() - start_time) * 1000 > timeout_sec:
             raise Exception(
@@ -131,13 +131,13 @@ def tcp_server_send(appmock_ip, tcp_port, message_binary):
     return body['result']
 
 
-def reset_tcp_history(appmock_ip):
+def reset_tcp_server_history(appmock_ip):
     """
     Performs a request to an appmock instance to reset all the history connected with ALL mocked TCP endpoints.
     The reset will cause this instance to act the same as if it was restarted clean - e. g. counters will be reset.
     Existing connections WILL NOT BE DISTURBED.
     """
-    _, _, body = _http_post(appmock_ip, appmock_rc_port, '/reset_tcp_history', True, '')
+    _, _, body = _http_post(appmock_ip, appmock_rc_port, '/reset_tcp_server_history', True, '')
     body = json.loads(body)
     if body['result'] == 'error':
         raise Exception(
@@ -165,7 +165,7 @@ def tcp_server_wait_for_connections(appmock_ip, tcp_port, number_of_connections,
 
     def check_conns_num(wait_for):
         result = tcp_server_connection_count(appmock_ip, tcp_port)
-        if result == number_of_connections:
+        if result >= number_of_connections:
             return
         elif (time.clock() - start_time) * 1000 > timeout_sec:
             raise Exception(

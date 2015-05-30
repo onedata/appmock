@@ -144,7 +144,7 @@
 
 
 % Endpoint used to reset mocked TCP endpoint history.
--define(RESET_TCP_HISTORY_PATH, "/reset_tcp_history").
+-define(RESET_TCP_HISTORY_PATH, "/reset_tcp_server_history").
 % No data is required to be sent
 -define(RESET_TCP_HISTORY_PACK_REQUEST, []).
 
