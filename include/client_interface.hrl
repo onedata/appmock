@@ -16,6 +16,7 @@
 
 -define(NAGIOS_ENPOINT, "/nagios").
 
+%%--------------------------------------------------------------------
 % Endpoint used to verify if all mocked endpoint were requested in proper order.
 -define(VERIFY_REST_HISTORY_PATH, "/verify_rest_history").
 % Transform a proplist of pairs {Port, Path} into a term that is sent as JSON to verify_rest_history endpoint (client side).
@@ -44,13 +45,12 @@
 ).
 
 
+%%--------------------------------------------------------------------
 % Endpoint used to reset mocked rest endpoint history.
 -define(RESET_REST_HISTORY_PATH, "/reset_rest_history").
-% No data is required to be sent
--define(RESET_REST_HISTORY_PACK_REQUEST, []).
 
 
-
+%%--------------------------------------------------------------------
 -define(REST_ENDPOINT_REQUEST_COUNT_PATH, "/rest_endpoint_request_count").
 % Creates a term that is sent as JSON to verify_rest_endpoint endpoint (client side).
 -define(REST_ENDPOINT_REQUEST_COUNT_REQUEST(_Port, _Path),
@@ -83,7 +83,7 @@
 ).
 
 
-
+%%--------------------------------------------------------------------
 % Endpoint used to verify if a mocked TCP server has received a given packet.
 % The port binding is used to identify the TCP server.
 -define(TCP_SERVER_MESSAGE_COUNT_PATH(_Port), "/tcp_server_message_count/" ++ integer_to_list(_Port)).
@@ -114,6 +114,7 @@
 ).
 
 
+%%--------------------------------------------------------------------
 % Endpoint used to send given data to all clients connected to specified server.
 % The port binding is used to identify the TCP server.
 -define(TCP_SERVER_SEND_PATH(_Port), "/tcp_server_send/" ++ integer_to_list(_Port)).
@@ -143,12 +144,12 @@
 ).
 
 
+%%--------------------------------------------------------------------
 % Endpoint used to reset mocked TCP endpoint history.
 -define(RESET_TCP_HISTORY_PATH, "/reset_tcp_server_history").
-% No data is required to be sent
--define(RESET_TCP_HISTORY_PACK_REQUEST, []).
 
 
+%%--------------------------------------------------------------------
 % Endpoint used to check number of client connections.
 -define(TCP_SERVER_CONNECTION_COUNT_PATH(_Port), "/tcp_server_connection_count/" ++ integer_to_list(_Port)).
 -define(TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, "/tcp_server_connection_count/:port").

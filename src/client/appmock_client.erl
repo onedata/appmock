@@ -102,10 +102,9 @@ verify_rest_history(Hostname, ExpectedOrder) ->
 -spec reset_rest_history(Hostname :: binary()) -> true | {error, term()}.
 reset_rest_history(Hostname) ->
     try
-        JSON = appmock_utils:encode_to_json(?RESET_REST_HISTORY_PACK_REQUEST),
         {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
         {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
-            <<?RESET_REST_HISTORY_PATH>>, post, [], JSON),
+            <<?RESET_REST_HISTORY_PATH>>, post, [], <<"">>),
         RespBody = appmock_utils:decode_from_json(RespBodyJSON),
         case RespBody of
             ?TRUE_RESULT ->
@@ -221,10 +220,9 @@ tcp_server_send(Hostname, Port, Data) ->
 -spec reset_tcp_server_history(Hostname :: binary()) -> true | {error, term()}.
 reset_tcp_server_history(Hostname) ->
     try
-        JSON = appmock_utils:encode_to_json(?RESET_TCP_HISTORY_PACK_REQUEST),
         {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
         {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
-            <<?RESET_TCP_HISTORY_PATH>>, post, [], JSON),
+            <<?RESET_TCP_HISTORY_PATH>>, post, [], <<"">>),
         RespBody = appmock_utils:decode_from_json(RespBodyJSON),
         case RespBody of
             ?TRUE_RESULT ->
