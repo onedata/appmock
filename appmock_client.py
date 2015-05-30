@@ -2,7 +2,13 @@ import json
 import requests
 import time
 
+# Appmock remote control port
 appmock_rc_port = 9999
+
+# These defines determine how often the appmock server will be requested to check for condition
+# when waiting for something. Increment rate causes each next interval to be longer
+WAIT_STARTING_CHECK_INTERVAL = 100
+WAIT_INTERVAL_INCREMENT_RATE = 1.3
 
 
 def _http_post(ip, port, path, use_ssl, data):
@@ -81,7 +87,7 @@ def reset_rest_history(appmock_ip):
 
 def tcp_server_message_count(appmock_ip, tcp_port, message_binary):
     """
-    Returns number of messages exactly macthing given message,
+    Returns number of messages exactly matching given message,
     that has been received by the TCP server mock.
     """
     _, _, body = _http_post(appmock_ip, appmock_rc_port,
@@ -92,6 +98,25 @@ def tcp_server_message_count(appmock_ip, tcp_port, message_binary):
         raise Exception(
             'tcp_server_message_count returned error: ' + body['reason'])
     return body['result']
+
+
+def tcp_server_wait_for_messages(appmock_ip, tcp_port, data, number_of_messages, timeout_sec):
+    """
+    Returns when given number of connections are established on given port, or after it timeouts.
+    """
+    start_time = time.clock()
+
+    def check_mess_num(wait_for):
+        result = tcp_server_message_count(appmock_ip, tcp_port, data)
+        if result == number_of_messages:
+            return
+        elif (time.clock() - start_time) * 1000 > timeout_sec:
+            raise Exception(
+                'tcp_server_wait_for_messages returned error: timeout')
+        else:
+            time.sleep(wait_for / 1000.0)
+            check_mess_num(wait_for * WAIT_INTERVAL_INCREMENT_RATE)
+    check_mess_num(WAIT_STARTING_CHECK_INTERVAL)
 
 
 def tcp_server_send(appmock_ip, tcp_port, message_binary):
@@ -131,11 +156,6 @@ def tcp_server_connection_count(appmock_ip, tcp_port):
             'tcp_server_connection_count returned error: ' + body['reason'])
     return body['result']
 
-# These consts determine how often the appmock server will be requested to check the number of connections.
-# Increment rate causes each next interval to be longer
-WAIT_FOR_CONNECTIONS_STARTING_CHECK_INTERVAL = 100
-WAIT_FOR_CONNECTIONS_INTERVAL_INCREMENT_RATE = 1.3
-
 
 def tcp_server_wait_for_connections(appmock_ip, tcp_port, number_of_connections, timeout_sec):
     """
@@ -152,5 +172,5 @@ def tcp_server_wait_for_connections(appmock_ip, tcp_port, number_of_connections,
                 'tcp_server_connection_count returned error: timeout')
         else:
             time.sleep(wait_for / 1000.0)
-            check_conns_num(wait_for * WAIT_FOR_CONNECTIONS_INTERVAL_INCREMENT_RATE)
-    check_conns_num(WAIT_FOR_CONNECTIONS_STARTING_CHECK_INTERVAL)
+            check_conns_num(wait_for * WAIT_INTERVAL_INCREMENT_RATE)
+    check_conns_num(WAIT_STARTING_CHECK_INTERVAL)

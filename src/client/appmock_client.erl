@@ -19,8 +19,14 @@
 
 %% API
 -export([rest_endpoint_request_count/3, verify_rest_history/2, reset_rest_history/1]).
--export([tcp_server_message_count/3, tcp_server_send/3, reset_tcp_history/1]).
+
+-export([tcp_server_message_count/3, tcp_server_wait_for_messages/5, tcp_server_send/3, reset_tcp_history/1]).
 -export([tcp_server_connection_count/2, tcp_server_wait_for_connections/4]).
+
+% These defines determine how often the appmock server will be requested to check for condition
+% when waiting for something. Increment rate causes each next interval to be longer
+-define(WAIT_STARTING_CHECK_INTERVAL, 100).
+-define(WAIT_INTERVAL_INCREMENT_RATE, 1.3).
 
 %%%===================================================================
 %%% API
@@ -141,6 +147,39 @@ tcp_server_message_count(Hostname, Port, Data) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% Returns when given number of given messages have been sent on given port, or after it timeouts.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_wait_for_messages(Hostname :: binary(), Port :: integer(),
+    Data :: binary(), MessageCount :: binary(), Timeout :: integer()) -> ok | {error, term()}.
+tcp_server_wait_for_messages(Hostname, Port, Data, MessageCount, Timeout) ->
+    try
+        StartingTime = now(),
+        CheckMessNum = fun(ThisFun, WaitFor) ->
+            case tcp_server_message_count(Hostname, Port, Data) of
+                {ok, MessageCount} ->
+                    ok;
+                {error, wrong_endpoint} ->
+                    {error, wrong_endpoint};
+                _ ->
+                    case utils:milliseconds_diff(now(), StartingTime) > Timeout of
+                        true ->
+                            {error, timeout};
+                        false ->
+                            timer:sleep(WaitFor),
+                            ThisFun(ThisFun, trunc(WaitFor * ?WAIT_INTERVAL_INCREMENT_RATE))
+                    end
+            end
+        end,
+        CheckMessNum(CheckMessNum, ?WAIT_STARTING_CHECK_INTERVAL)
+    catch T:M ->
+        ?error("Error in tcp_server_wait_for_messages - ~p:~p", [T, M]),
+        {error, M}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Performs a request to an appmock instance to verify if the mocked endpoints
 %% had been requested in correct order. ExpectedOrder is a list of {Port, Path} pairs
 %% that define the expected order of requests. Returns:
@@ -218,10 +257,6 @@ tcp_server_connection_count(Hostname, Port) ->
     end.
 
 
-% These defines determine how often the appmock server will be requested to check the number of connections.
-% Increment rate causes each next interval to be longer
--define(WAIT_FOR_CONNECTIONS_STARTING_CHECK_INTERVAL, 100).
--define(WAIT_FOR_CONNECTIONS_INTERVAL_INCREMENT_RATE, 1.3).
 %%--------------------------------------------------------------------
 %% @doc
 %% Returns when given number of connections are established on given port, or after it timeouts.
@@ -238,17 +273,17 @@ tcp_server_wait_for_connections(Hostname, Port, ConnNumber, Timeout) ->
                     ok;
                 {error, wrong_endpoint} ->
                     {error, wrong_endpoint};
-                Other ->
+                _ ->
                     case utils:milliseconds_diff(now(), StartingTime) > Timeout of
                         true ->
                             {error, timeout};
                         false ->
                             timer:sleep(WaitFor),
-                            ThisFun(ThisFun, trunc(WaitFor * ?WAIT_FOR_CONNECTIONS_INTERVAL_INCREMENT_RATE))
+                            ThisFun(ThisFun, trunc(WaitFor * ?WAIT_INTERVAL_INCREMENT_RATE))
                     end
             end
         end,
-        CheckConnNum(CheckConnNum, ?WAIT_FOR_CONNECTIONS_STARTING_CHECK_INTERVAL)
+        CheckConnNum(CheckConnNum, ?WAIT_STARTING_CHECK_INTERVAL)
     catch T:M ->
         ?error("Error in tcp_server_wait_for_connections - ~p:~p", [T, M]),
         {error, M}
