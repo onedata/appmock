@@ -20,7 +20,7 @@
 %% API
 -export([rest_endpoint_request_count/3, verify_rest_history/2, reset_rest_history/1]).
 
--export([tcp_server_message_count/3, tcp_server_wait_for_messages/6, tcp_server_send/3, reset_tcp_server_history/1]).
+-export([tcp_server_specific_message_count/3, tcp_server_all_messages_count/2, tcp_server_wait_for_messages/6, tcp_server_send/4, reset_tcp_server_history/1]).
 -export([tcp_server_connection_count/2, tcp_server_wait_for_connections/5]).
 
 % These defines determine how often the appmock server will be requested to check for condition
@@ -118,28 +118,49 @@ reset_rest_history(Hostname) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Performs a request to an appmock instance to verify if the mocked endpoints
-%% had been requested in correct order. ExpectedOrder is a list of {Port, Path} pairs
-%% that define the expected order of requests. Returns:
-%% true - when verification succeded
-%% false - when verification failed
-%% {error, term()} - when there has been an error in verification
-%% procedure (this implies a bug in appmock).
+%% Performs a request to an appmock instance to check the number of
+%% specific messages received by a TCP endpoint. Returns:
+%% Count - number of requests
+%% {error, term()} - when there has been an error.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_message_count(Hostname :: binary(), Port :: integer(), Data :: binary()) ->
-    true | false | {error, term()}.
-tcp_server_message_count(Hostname, Port, Data) ->
+-spec tcp_server_specific_message_count(Hostname :: binary(), Port :: integer(), Data :: binary()) ->
+    integer() | {error, term()}.
+tcp_server_specific_message_count(Hostname, Port, Data) ->
     try
-        Binary = ?TCP_SERVER_MESSAGE_COUNT_PACK_REQUEST(Data),
+        Binary = ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_REQUEST(Data),
         {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
-        Path = ?TCP_SERVER_MESSAGE_COUNT_PATH(Port),
+        Path = ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PATH(Port),
         {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
             <<(list_to_binary(Path))/binary>>, post, [], Binary),
         RespBody = appmock_utils:decode_from_json(RespBodyJSON),
-        ?TCP_SERVER_MESSAGE_COUNT_UNPACK_RESPONSE(RespBody)
+        ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_UNPACK_RESPONSE(RespBody)
     catch T:M ->
-        ?error("Error in tcp_server_message_count - ~p:~p", [T, M]),
+        ?error("Error in tcp_server_specific_message_count - ~p:~p", [T, M]),
+        {error, M}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Performs a request to an appmock instance to check the number of
+%% all messages received by a TCP endpoint. Returns:
+%% Count - number of requests
+%% {error, term()} - when there has been an error.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_all_messages_count(Hostname :: binary(), Port :: integer()) ->
+    integer() | {error, term()}.
+tcp_server_all_messages_count(Hostname, Port) ->
+    try
+        {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
+        Path = ?TCP_SERVER_ALL_MESSAGES_COUNT_PATH(Port),
+        {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
+            <<(list_to_binary(Path))/binary>>, post, [], <<"">>),
+        RespBody = appmock_utils:decode_from_json(RespBodyJSON),
+        ?TCP_SERVER_ALL_MESSAGES_COUNT_UNPACK_RESPONSE(RespBody)
+    catch T:M ->
+        ?error("Error in tcp_server_all_messages_count - ~p:~p", [T, M]),
         {error, M}
     end.
 
@@ -156,7 +177,7 @@ tcp_server_wait_for_messages(Hostname, Port, Data, MessageCount, AcceptMore, Tim
     try
         StartingTime = now(),
         CheckMessNum = fun(ThisFun, WaitFor) ->
-            case tcp_server_message_count(Hostname, Port, Data) of
+            case tcp_server_specific_message_count(Hostname, Port, Data) of
                 {ok, Result} when AcceptMore andalso Result >= MessageCount ->
                     ok;
                 {ok, Result} when Result =:= MessageCount ->
@@ -191,13 +212,13 @@ tcp_server_wait_for_messages(Hostname, Port, Data, MessageCount, AcceptMore, Tim
 %% procedure (this implies a bug in appmock).
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_send(Hostname :: binary(), Port :: integer(), Data :: binary()) ->
+-spec tcp_server_send(Hostname :: binary(), Port :: integer(), Data :: binary(), MessageCount :: integer()) ->
     true | {error, term()}.
-tcp_server_send(Hostname, Port, Data) ->
+tcp_server_send(Hostname, Port, Data, MessageCount) ->
     try
         Binary = ?TCP_SERVER_SEND_PACK_REQUEST(Data),
         {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
-        Path = ?TCP_SERVER_SEND_PATH(Port),
+        Path = ?TCP_SERVER_SEND_PATH(Port, MessageCount),
         {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
             <<(list_to_binary(Path))/binary>>, post, [], Binary),
         RespBody = appmock_utils:decode_from_json(RespBodyJSON),

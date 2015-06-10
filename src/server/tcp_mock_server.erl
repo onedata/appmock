@@ -22,7 +22,8 @@
 
 %% API
 -export([start_link/0, healthcheck/0]).
--export([report_connection_state/3, register_packet/2, tcp_server_message_count/2, tcp_server_send/2]).
+-export([report_connection_state/3, register_packet/2]).
+-export([tcp_server_specific_message_count/2, tcp_server_all_messages_count/1, tcp_server_send/3]).
 -export([reset_tcp_mock_history/0, tcp_server_connection_count/1]).
 
 %% gen_server callbacks
@@ -38,7 +39,8 @@
 -define(NUMBER_OF_ACCEPTORS, 10).
 % Timeout of tcp_server_send function - if by this time all connection pids do not report
 % back, the sending is considered failed.
--define(SEND_TIMEOUT, 500).
+-define(SEND_TIMEOUT_BASE, 500).
+-define(SEND_TIMEOUT_PER_MSG, 10).
 
 % Internal state of the gen server
 -record(state, {
@@ -102,14 +104,22 @@ register_packet(Port, Data) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Returns how many times has a TCP esrver received specific message.
-%% This task is delegated straight to tcp_mock_server, but this function is here
-%% for clear API.
+%% Returns how many times has a TCP server received specific message.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_message_count(Port :: integer(), Data :: binary()) -> {ok, integer()} | {error, term()}.
-tcp_server_message_count(Port, Data) ->
+-spec tcp_server_specific_message_count(Port :: integer(), Data :: binary()) -> {ok, integer()} | {error, term()}.
+tcp_server_specific_message_count(Port, Data) ->
     gen_server:call(?SERVER, {tcp_server_message_count, Port, Data}).
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Returns the total number of messages that a TCP endpoint received.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_all_messages_count(Port :: integer()) -> {ok, integer()} | {error, term()}.
+tcp_server_all_messages_count(Port) ->
+    gen_server:call(?SERVER, {tcp_server_all_messages_count, Port}).
 
 
 %%--------------------------------------------------------------------
@@ -117,9 +127,9 @@ tcp_server_message_count(Port, Data) ->
 %% Sends given data to all clients connected to the TCP server on specified port.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_send(Port :: integer(), Data :: binary()) -> true | {error, term()}.
-tcp_server_send(Port, Data) ->
-    gen_server:call(?SERVER, {tcp_server_send, Port, Data}).
+-spec tcp_server_send(Port :: integer(), Data :: binary(), Count :: integer()) -> true | {error, term()}.
+tcp_server_send(Port, Data, Count) ->
+    gen_server:call(?SERVER, {tcp_server_send, Port, Data, Count}, infinity).
 
 
 %%--------------------------------------------------------------------
@@ -236,20 +246,38 @@ handle_call({tcp_server_message_count, Port, Data}, _From, State) ->
             end,
     {reply, Reply, State};
 
-handle_call({tcp_server_send, Port, Data}, _From, State) ->
+handle_call({tcp_server_all_messages_count, Port}, _From, State) ->
+    % TODO DODODOD
+%%     #state{request_history = RequestHistory} = State,
+%%     HistoryForPort = proplists:get_value(Port, RequestHistory, undefined),
+%%     Reply = case HistoryForPort of
+%%                 undefined ->
+%%                     {error, wrong_endpoint};
+%%                 _ ->
+%%                     case dict:find(Data, HistoryForPort) of
+%%                         {ok, [Count]} ->
+%%                             {ok, Count};
+%%                         error ->
+%%                             {ok, 0}
+%%                     end
+%%             end,
+    {reply, Reply, State};
+
+handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
     #state{connections = Connections} = State,
     ConnectionsForPort = proplists:get_value(Port, Connections, undefined),
     Reply = case ConnectionsForPort of
                 undefined ->
                     {error, wrong_endpoint};
                 _ ->
+                    Timeout = ?SEND_TIMEOUT_BASE + Count * ?SEND_TIMEOUT_PER_MSG,
                     Result = utils:pmap(
                         fun(Pid) ->
-                            Pid ! {self(), send, Data},
+                            Pid ! {self(), send, Data, Count},
                             receive
                                 {Pid, ok} -> ok
                             after
-                                ?SEND_TIMEOUT -> error
+                                Timeout -> error
                             end
                         end, ConnectionsForPort),
                     % If all pids reported back, sending succeded
