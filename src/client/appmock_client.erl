@@ -145,30 +145,6 @@ tcp_server_specific_message_count(Hostname, Port, Data) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Performs a request to an appmock instance to check the number of
-%% all messages received by a TCP endpoint. Returns:
-%% Count - number of requests
-%% {error, term()} - when there has been an error.
-%% @end
-%%--------------------------------------------------------------------
--spec tcp_server_all_messages_count(Hostname :: binary(), Port :: integer()) ->
-    integer() | {error, term()}.
-tcp_server_all_messages_count(Hostname, Port) ->
-    try
-        {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
-        Path = ?TCP_SERVER_ALL_MESSAGES_COUNT_PATH(Port),
-        {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
-            <<(list_to_binary(Path))/binary>>, post, [], <<"">>),
-        RespBody = appmock_utils:decode_from_json(RespBodyJSON),
-        ?TCP_SERVER_ALL_MESSAGES_COUNT_UNPACK_RESPONSE(RespBody)
-    catch T:M ->
-        ?error("Error in tcp_server_all_messages_count - ~p:~p", [T, M]),
-        {error, M}
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @doc
 %% Returns when given number of given messages have been sent on given port, or after it timeouts.
 %% The AcceptMore flag makes the function succeed when there is the same or more messages than expected.
 %% @end
@@ -198,7 +174,31 @@ tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, Accept
         end,
         CheckMessNum(CheckMessNum, ?WAIT_STARTING_CHECK_INTERVAL)
     catch T:M ->
-        ?error("Error in tcp_server_wait_for_messages - ~p:~p", [T, M]),
+        ?error("Error in tcp_server_wait_for_specific_messages - ~p:~p", [T, M]),
+        {error, M}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Performs a request to an appmock instance to check the number of
+%% all messages received by a TCP endpoint. Returns:
+%% Count - number of requests
+%% {error, term()} - when there has been an error.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_all_messages_count(Hostname :: binary(), Port :: integer()) ->
+    integer() | {error, term()}.
+tcp_server_all_messages_count(Hostname, Port) ->
+    try
+        {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
+        Path = ?TCP_SERVER_ALL_MESSAGES_COUNT_PATH(Port),
+        {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
+            <<(list_to_binary(Path))/binary>>, post, [], <<"">>),
+        RespBody = appmock_utils:decode_from_json(RespBodyJSON),
+        ?TCP_SERVER_ALL_MESSAGES_COUNT_UNPACK_RESPONSE(RespBody)
+    catch T:M ->
+        ?error("Error in tcp_server_all_messages_count - ~p:~p", [T, M]),
         {error, M}
     end.
 
@@ -234,7 +234,7 @@ tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, Timeo
         end,
         CheckMessNum(CheckMessNum)
     catch T:M ->
-        ?error("Error in tcp_server_wait_for_messages - ~p:~p", [T, M]),
+        ?error("Error in tcp_server_wait_for_any_messages - ~p:~p", [T, M]),
         {error, M}
     end.
 

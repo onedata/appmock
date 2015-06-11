@@ -116,7 +116,7 @@ def tcp_server_wait_for_specific_messages(appmock_ip, tcp_port, data, number_of_
             return
         elif time.time() - start_time > timeout_sec:
             raise Exception(
-                'tcp_server_wait_for_messages returned error: timeout')
+                'tcp_server_wait_for_specific_messages returned error: timeout')
         else:
             time.sleep(wait_for / 1000.0)
             wait_for *= WAIT_INTERVAL_INCREMENT_RATE
@@ -152,7 +152,7 @@ def tcp_server_wait_for_any_messages(appmock_ip, tcp_port, number_of_messages, a
             return
         elif time.time() - start_time > timeout_sec:
             raise Exception(
-                'tcp_server_wait_for_messages returned error: timeout')
+                'tcp_server_wait_for_any_messages returned error: timeout')
         else:
             time.sleep(wait_for / 1000.0)
             # No incrementing wait time here because this fun might be used for benchmarking.
