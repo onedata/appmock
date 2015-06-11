@@ -20,12 +20,14 @@
 %% API
 -export([rest_endpoint_request_count/3, verify_rest_history/2, reset_rest_history/1]).
 
--export([tcp_server_specific_message_count/3, tcp_server_all_messages_count/2, tcp_server_wait_for_messages/6, tcp_server_send/4, reset_tcp_server_history/1]).
+-export([tcp_server_specific_message_count/3, tcp_server_wait_for_specific_messages/6]).
+-export([tcp_server_all_messages_count/2, tcp_server_wait_for_any_messages/5]).
+-export([tcp_server_send/4, reset_tcp_server_history/1]).
 -export([tcp_server_connection_count/2, tcp_server_wait_for_connections/5]).
 
 % These defines determine how often the appmock server will be requested to check for condition
 % when waiting for something. Increment rate causes each next interval to be longer
--define(WAIT_STARTING_CHECK_INTERVAL, 100).
+-define(WAIT_STARTING_CHECK_INTERVAL, 250).
 -define(WAIT_INTERVAL_INCREMENT_RATE, 1.3).
 
 %%%===================================================================
@@ -171,9 +173,9 @@ tcp_server_all_messages_count(Hostname, Port) ->
 %% The AcceptMore flag makes the function succeed when there is the same or more messages than expected.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_wait_for_messages(Hostname :: binary(), Port :: integer(),
+-spec tcp_server_wait_for_specific_messages(Hostname :: binary(), Port :: integer(),
     Data :: binary(), MessageCount :: binary(), AcceptMore :: boolean(), Timeout :: integer()) -> ok | {error, term()}.
-tcp_server_wait_for_messages(Hostname, Port, Data, MessageCount, AcceptMore, Timeout) ->
+tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, AcceptMore, Timeout) ->
     try
         StartingTime = now(),
         CheckMessNum = fun(ThisFun, WaitFor) ->
@@ -195,6 +197,42 @@ tcp_server_wait_for_messages(Hostname, Port, Data, MessageCount, AcceptMore, Tim
             end
         end,
         CheckMessNum(CheckMessNum, ?WAIT_STARTING_CHECK_INTERVAL)
+    catch T:M ->
+        ?error("Error in tcp_server_wait_for_messages - ~p:~p", [T, M]),
+        {error, M}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Returns when given number of given messages have been sent on given port, or after it timeouts.
+%% The AcceptMore flag makes the function succeed when there is the same or more messages than expected.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_wait_for_any_messages(Hostname :: binary(), Port :: integer(),
+    MessageCount :: binary(), AcceptMore :: boolean(), Timeout :: integer()) -> ok | {error, term()}.
+tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, Timeout) ->
+    try
+        StartingTime = now(),
+        CheckMessNum = fun(ThisFun) ->
+            case tcp_server_all_messages_count(Hostname, Port) of
+                {ok, Result} when AcceptMore andalso Result >= MessageCount ->
+                    ok;
+                {ok, Result} when Result =:= MessageCount ->
+                    ok;
+                {error, wrong_endpoint} ->
+                    {error, wrong_endpoint};
+                _ ->
+                    case utils:milliseconds_diff(now(), StartingTime) > Timeout of
+                        true ->
+                            {error, timeout};
+                        false ->
+                            timer:sleep(?WAIT_STARTING_CHECK_INTERVAL),
+                            ThisFun(ThisFun)
+                    end
+            end
+        end,
+        CheckMessNum(CheckMessNum)
     catch T:M ->
         ?error("Error in tcp_server_wait_for_messages - ~p:~p", [T, M]),
         {error, M}
