@@ -158,7 +158,7 @@ def tcp_server_wait_for_any_messages(appmock_ip, tcp_port, number_of_messages, a
             # No incrementing wait time here because this fun might be used for benchmarking.
 
 
-def tcp_server_send(appmock_ip, tcp_port, message_binary, message_count):
+def tcp_server_send(appmock_ip, tcp_port, message_binary, message_count=1):
     """
     Orders appmock to send given message to all connected clients, given amount of times."""
     _, _, body = _http_post(appmock_ip, appmock_rc_port,
