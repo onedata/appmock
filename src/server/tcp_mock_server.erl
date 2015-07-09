@@ -218,7 +218,6 @@ handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
                     case UseSSL of
                         true ->
                             {ok, Socket} = ssl2:connect("127.0.0.1", Port, []),
-                            ok = ssl2:handshake(Socket),
                             ssl2:close(Socket);
                         false ->
                             {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
