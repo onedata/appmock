@@ -24,7 +24,7 @@
 -export([start_link/0, healthcheck/0]).
 -export([report_connection_state/3, register_packet/2]).
 -export([tcp_server_specific_message_count/2, tcp_server_all_messages_count/1, tcp_server_send/3]).
--export([reset_tcp_mock_history/0, tcp_server_connection_count/1]).
+-export([tcp_mock_history/1, reset_tcp_mock_history/0, tcp_server_connection_count/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -45,14 +45,16 @@
 % Internal state of the gen server
 -record(state, {
     listeners = [] :: [term()],
-    request_counts = [] :: [{Port :: integer(), Count :: integer()}],
     history_enabled = [] :: [{Port :: integer(), Flag :: boolean()}],
-    % The history dict holds mappings Packet -> boolean(), where the
-    % boolean value means if given packet was received.
-    request_history = [] :: [{Port :: integer(), History :: dict:dict()}],
+    port_msg_counts = [] :: [{Port :: integer(), Count :: integer()}],
+    % The history dict holds mappings Packet -> integer(), where the
+    % integer value means number of such packets received.
+    port_msg_counts_per_msg = [] :: [{Port :: integer(), CountPerMsgMap :: dict:dict()}],
+    inititial_port_msg_counts_per_msg = [] :: [{Port :: integer(), CountPerMsgMap :: dict:dict()}],
+    % Complete message history for given port (NOTE: in reverse order!)
+    port_msg_history = [] :: [{Port :: integer(), [binary()]}],
     % The connections proplist holds a list of active pids for each port.
-    connections = [] :: [{Port :: integer(), [pid()]}],
-    initial_request_history = [] :: [{Port :: integer(), History :: dict:dict()}]
+    connections = [] :: [{Port :: integer(), [pid()]}]
 }).
 
 %%%===================================================================
@@ -136,6 +138,16 @@ tcp_server_send(Port, Data, Count) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% Returns full history of messages received on given endpoint.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_mock_history(Port :: integer()) -> {ok, [Message :: binary()]} | {error, term()}.
+tcp_mock_history(Port) ->
+    gen_server:call(?SERVER, {tcp_mock_history, Port}, infinity).
+
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Handles requests to reset ALL mocked TCP endpoints.
 %% @end
 %%--------------------------------------------------------------------
@@ -179,9 +191,9 @@ init([]) ->
         fun(Port) ->
             {Port, []}
         end, Ports),
-    {ok, #state{listeners = ListenersIDs, request_history = InitializedHistory, request_counts = [],
-        connections = InitializedConnections, initial_request_history = InitializedHistory,
-        history_enabled = HistoryEnabled}}.
+    {ok, #state{listeners = ListenersIDs, connections = InitializedConnections, port_msg_counts = [],
+        port_msg_counts_per_msg = InitializedHistory, inititial_port_msg_counts_per_msg = InitializedHistory,
+        port_msg_history = [], history_enabled = HistoryEnabled}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -198,7 +210,7 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(healthcheck, _From, #state{request_history = RequestHistory} = State) ->
+handle_call(healthcheck, _From, #state{port_msg_counts_per_msg = CountsPerMsg} = State) ->
     Reply =
         try
             % Check connectivity to all TCP listeners
@@ -206,7 +218,7 @@ handle_call(healthcheck, _From, #state{request_history = RequestHistory} = State
                 fun({Port, _}) ->
                     {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
                     gen_tcp:close(Socket)
-                end, RequestHistory),
+                end, CountsPerMsg),
             ok
         catch T:M ->
             ?error_stacktrace("Error during ~p healthcheck- ~p:~p", [?MODULE, T, M]),
@@ -227,31 +239,39 @@ handle_call({report_connection_state, Port, Pid, IsAlive}, _From, State) ->
 
 
 handle_call({register_packet, Port, Data}, _From, State) ->
-    #state{request_history = RequestHistory, request_counts = RequestCount, history_enabled = HistoryEnabled} = State,
-    NewHistory = case proplists:get_value(Port, HistoryEnabled, true) of
-                     false ->
-                         RequestHistory;
-                     true ->
-                         HistoryForPort = proplists:get_value(Port, RequestHistory, dict:new()),
-                         NewHistoryForPort = dict:update(Data, fun([Old]) -> [Old + 1] end, [1], HistoryForPort),
-                         [{Port, NewHistoryForPort} | proplists:delete(Port, RequestHistory)]
-                 end,
+    #state{port_msg_counts_per_msg = CountsPerMsg, port_msg_counts = RequestCount,
+        port_msg_history = MsgHistory, history_enabled = HistoryEnabled} = State,
+    {NewCountsPerMsg, NewMsgHistory} =
+        case proplists:get_value(Port, HistoryEnabled, true) of
+            false ->
+                {CountsPerMsg, MsgHistory};
+            true ->
+                CountsForPort = proplists:get_value(Port, CountsPerMsg, dict:new()),
+                NewCountsForPort = dict:update(Data, fun([Old]) ->
+                    [Old + 1] end, [1], CountsForPort),
+                NCPR = [{Port, NewCountsForPort} | proplists:delete(Port, CountsPerMsg)],
+                HistoryForPort = proplists:get_value(Port, MsgHistory, []),
+                NewHistoryForPort = [Data | HistoryForPort],
+                NWH = [{Port, NewHistoryForPort} | proplists:delete(Port, MsgHistory)],
+                {NCPR, NWH}
+        end,
     CountForPort = proplists:get_value(Port, RequestCount, 0),
     NewCounts = [{Port, CountForPort + 1} | proplists:delete(Port, RequestCount)],
-    {reply, ok, State#state{request_history = NewHistory, request_counts = NewCounts}};
+    {reply, ok, State#state{port_msg_counts_per_msg = NewCountsPerMsg,
+        port_msg_history = NewMsgHistory, port_msg_counts = NewCounts}};
 
 handle_call({tcp_server_specific_message_count, Port, Data}, _From, State) ->
-    #state{request_history = RequestHistory, history_enabled = HistoryEnabled} = State,
+    #state{port_msg_counts_per_msg = CountsPerMsg, history_enabled = HistoryEnabled} = State,
     Reply = case proplists:get_value(Port, HistoryEnabled, true) of
                 false ->
                     {error, counter_mode};
                 true ->
-                    HistoryForPort = proplists:get_value(Port, RequestHistory, undefined),
-                    case HistoryForPort of
+                    CountsForPort = proplists:get_value(Port, CountsPerMsg, undefined),
+                    case CountsForPort of
                         undefined ->
                             {error, wrong_endpoint};
                         _ ->
-                            case dict:find(Data, HistoryForPort) of
+                            case dict:find(Data, CountsForPort) of
                                 {ok, [Count]} ->
                                     {ok, Count};
                                 error ->
@@ -261,7 +281,7 @@ handle_call({tcp_server_specific_message_count, Port, Data}, _From, State) ->
             end,
     {reply, Reply, State};
 
-handle_call({tcp_server_all_messages_count, Port}, _From, #state{request_counts = RequestCount} = State) ->
+handle_call({tcp_server_all_messages_count, Port}, _From, #state{port_msg_counts = RequestCount} = State) ->
     CountForPort = proplists:get_value(Port, RequestCount, 0),
     {reply, {ok, CountForPort}, State};
 
@@ -294,9 +314,21 @@ handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
 
     {reply, Reply, State};
 
+handle_call({tcp_mock_history, Port}, _From, State) ->
+    #state{port_msg_history = PortMsgHistory, history_enabled = HistoryEnabled} = State,
+    Reply = case proplists:get_value(Port, HistoryEnabled, true) of
+                false ->
+                    {error, counter_mode};
+                true ->
+                    HistoryForPort = proplists:get_value(Port, PortMsgHistory, []),
+                    {ok, lists:reverse(HistoryForPort)}
+            end,
+    {reply, Reply, State};
+
 handle_call(reset_tcp_mock_history, _From, State) ->
-    #state{initial_request_history = InitialRequestHistory} = State,
-    {reply, true, State#state{request_history = InitialRequestHistory, request_counts = []}};
+    #state{inititial_port_msg_counts_per_msg = InitialRequestHistory} = State,
+    {reply, true, State#state{port_msg_counts_per_msg = InitialRequestHistory,
+        port_msg_counts = [], port_msg_history = []}};
 
 handle_call({tcp_server_connection_count, Port}, _From, State) ->
     #state{connections = Connections} = State,

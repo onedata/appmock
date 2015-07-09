@@ -20,9 +20,9 @@
 %% API
 -export([rest_endpoint_request_count/3, verify_rest_history/2, reset_rest_history/1]).
 
--export([tcp_server_specific_message_count/3, tcp_server_wait_for_specific_messages/6]).
--export([tcp_server_all_messages_count/2, tcp_server_wait_for_any_messages/5]).
--export([tcp_server_send/4, reset_tcp_server_history/1]).
+-export([tcp_server_specific_message_count/3, tcp_server_wait_for_specific_messages/7]).
+-export([tcp_server_all_messages_count/2, tcp_server_wait_for_any_messages/6]).
+-export([tcp_server_send/4, tcp_server_history/2, reset_tcp_server_history/1]).
 -export([tcp_server_connection_count/2, tcp_server_wait_for_connections/5]).
 
 % These defines determine how often the appmock server will be requested to check for condition
@@ -149,9 +149,10 @@ tcp_server_specific_message_count(Hostname, Port, Data) ->
 %% The AcceptMore flag makes the function succeed when there is the same or more messages than expected.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_wait_for_specific_messages(Hostname :: binary(), Port :: integer(),
-    Data :: binary(), MessageCount :: binary(), AcceptMore :: boolean(), Timeout :: integer()) -> ok | {error, term()}.
-tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, AcceptMore, Timeout) ->
+-spec tcp_server_wait_for_specific_messages(Hostname :: binary(), Port :: integer(), Data :: binary(),
+    MessageCount :: binary(), AcceptMore :: boolean(), ReturnHistory :: boolean(), Timeout :: integer()) ->
+    ok | {error, term()}.
+tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, AcceptMore, ReturnHistory, Timeout) ->
     try
         StartingTime = now(),
         CheckMessNum = fun(ThisFun, WaitFor) ->
@@ -160,19 +161,27 @@ tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, Accept
                     ok;
                 {ok, Result} when Result =:= MessageCount ->
                     ok;
-                {error, wrong_endpoint} ->
-                    {error, wrong_endpoint};
-                _ ->
+                {ok, _} ->
                     case utils:milliseconds_diff(now(), StartingTime) > Timeout of
                         true ->
                             {error, timeout};
                         false ->
                             timer:sleep(WaitFor),
                             ThisFun(ThisFun, trunc(WaitFor * ?WAIT_INTERVAL_INCREMENT_RATE))
-                    end
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
             end
         end,
-        CheckMessNum(CheckMessNum, ?WAIT_STARTING_CHECK_INTERVAL)
+        Res = CheckMessNum(CheckMessNum, ?WAIT_STARTING_CHECK_INTERVAL),
+        case {Res, ReturnHistory} of
+            {ok, false} ->
+                ok;
+            {ok, true} ->
+                tcp_server_history(Hostname, Port);
+            _ ->
+                Res
+        end
     catch T:M ->
         ?error("Error in tcp_server_wait_for_specific_messages - ~p:~p", [T, M]),
         {error, M}
@@ -209,9 +218,9 @@ tcp_server_all_messages_count(Hostname, Port) ->
 %% The AcceptMore flag makes the function succeed when there is the same or more messages than expected.
 %% @end
 %%--------------------------------------------------------------------
--spec tcp_server_wait_for_any_messages(Hostname :: binary(), Port :: integer(),
-    MessageCount :: binary(), AcceptMore :: boolean(), Timeout :: integer()) -> ok | {error, term()}.
-tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, Timeout) ->
+-spec tcp_server_wait_for_any_messages(Hostname :: binary(), Port :: integer(), MessageCount :: binary(),
+    AcceptMore :: boolean(), ReturnHistory :: boolean(), Timeout :: integer()) -> ok | {ok, [binary()]} | {error, term()}.
+tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, ReturnHistory, Timeout) ->
     try
         StartingTime = now(),
         CheckMessNum = fun(ThisFun) ->
@@ -220,19 +229,27 @@ tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, Timeo
                     ok;
                 {ok, Result} when Result =:= MessageCount ->
                     ok;
-                {error, wrong_endpoint} ->
-                    {error, wrong_endpoint};
-                _ ->
+                {ok, _} ->
                     case utils:milliseconds_diff(now(), StartingTime) > Timeout of
                         true ->
                             {error, timeout};
                         false ->
                             timer:sleep(?WAIT_STARTING_CHECK_INTERVAL),
                             ThisFun(ThisFun)
-                    end
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
             end
         end,
-        CheckMessNum(CheckMessNum)
+        Res = CheckMessNum(CheckMessNum),
+        case {Res, ReturnHistory} of
+            {ok, false} ->
+                ok;
+            {ok, true} ->
+                tcp_server_history(Hostname, Port);
+            _ ->
+                Res
+        end
     catch T:M ->
         ?error("Error in tcp_server_wait_for_any_messages - ~p:~p", [T, M]),
         {error, M}
@@ -284,7 +301,7 @@ reset_tcp_server_history(Hostname) ->
     try
         {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
         {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
-            <<?RESET_TCP_SERVER_HISTORY_PATH>>, post, [], <<"">>),
+            <<?RESET_TCP_MOCK_HISTORY_PATH>>, post, [], <<"">>),
         RespBody = appmock_utils:decode_from_json(RespBodyJSON),
         case RespBody of
             ?TRUE_RESULT ->
@@ -292,6 +309,28 @@ reset_tcp_server_history(Hostname) ->
         end
     catch T:M ->
         ?error("Error in reset_tcp_history - ~p:~p", [T, M]),
+        {error, M}
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Performs a request to an appmock instance to
+%% obtain full history of messages received on given endpoint.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_history(Hostname :: binary(), Port :: integer()) ->
+    {ok, [binary()]} | {error, term()}.
+tcp_server_history(Hostname, Port) ->
+    try
+        {ok, RemoteControlPort} = application:get_env(?APP_NAME, remote_control_port),
+        Path = ?TCP_SERVER_HISTORY_PATH(Port),
+        {200, _, RespBodyJSON} = appmock_utils:https_request(Hostname, RemoteControlPort,
+            Path, post, [], <<"">>),
+        RespBody = appmock_utils:decode_from_json(RespBodyJSON),
+        ?TCP_SERVER_HISTORY_UNPACK_RESPONSE(RespBody)
+    catch T:M ->
+        ?error("Error in tcp_server_history - ~p:~p", [T, M]),
         {error, M}
     end.
 
