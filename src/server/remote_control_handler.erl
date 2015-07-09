@@ -206,7 +206,7 @@ handle_request(?TCP_SERVER_HISTORY_COWBOY_ROUTE, Req) ->
     Req3 = gui_utils:cowboy_ensure_header(<<"content-type">>, <<"application/json">>, Req2),
     {ok, _NewReq} = cowboy_req:reply(200, Req3);
 
-handle_request(?RESET_TCP_MOCK_HISTORY_PATH, Req) ->
+handle_request(?RESET_TCP_SERVER_HISTORY_PATH, Req) ->
     ReplyTerm = case remote_control_server:reset_tcp_mock_history() of
                     true ->
                         ?TRUE_RESULT

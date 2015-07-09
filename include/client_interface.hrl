@@ -207,7 +207,7 @@
 
 %%--------------------------------------------------------------------
 % Endpoint used to reset mocked TCP endpoint history.
--define(RESET_TCP_MOCK_HISTORY_PATH, "/reset_tcp_server_history").
+-define(RESET_TCP_SERVER_HISTORY_PATH, "/reset_tcp_server_history").
 
 
 %%--------------------------------------------------------------------
