@@ -105,6 +105,7 @@ def tcp_server_wait_for_specific_messages(appmock_ip, tcp_port, data, number_of_
     """
     Returns when given number of specific messages has been received on given port, or after it timeouts.
     The accept_more flag makes the function succeed when there is the same or more messages than expected.
+    The return_history flag causes the function to return full msg history upon success.
     """
     start_time = time.time()
     wait_for = WAIT_STARTING_CHECK_INTERVAL
@@ -144,6 +145,7 @@ def tcp_server_wait_for_any_messages(appmock_ip, tcp_port, number_of_messages,
     """
     Returns when given number of any messages has been received on given port, or after it timeouts.
     The accept_more flag makes the function succeed when there is the same or more messages than expected.
+    The return_history flag causes the function to return full msg history upon success.
     """
     start_time = time.time()
     wait_for = WAIT_STARTING_CHECK_INTERVAL
