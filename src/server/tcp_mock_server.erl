@@ -39,8 +39,8 @@
 -define(NUMBER_OF_ACCEPTORS, 10).
 % Timeout of tcp_server_send function - if by this time all connection pids do not report
 % back, the sending is considered failed.
--define(SEND_TIMEOUT_BASE, 500).
--define(SEND_TIMEOUT_PER_MSG, 10).
+-define(SEND_TIMEOUT_BASE, timer:seconds(10)).
+-define(SEND_TIMEOUT_PER_MSG, timer:seconds(1)).
 
 % Internal state of the gen server
 -record(state, {
@@ -286,7 +286,8 @@ handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
                     case lists:duplicate(length(Result), ok) of
                         Result ->
                             true;
-                        _ ->
+                        SomethingElse ->
+                            ?error("failed_to_send_data: ~p", [SomethingElse]),
                             {error, failed_to_send_data}
                     end
             end,
@@ -399,7 +400,7 @@ start_listeners(AppDescriptionModule) ->
             % Generate listener name
             ListenerID = "tcp" ++ integer_to_list(Port),
             Protocol = case UseSSL of
-                           true -> ranch_ssl;
+                           true -> ranch_ssl2;
                            false -> ranch_tcp
                        end,
             Opts = case UseSSL of
