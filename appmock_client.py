@@ -85,18 +85,18 @@ def reset_rest_history(appmock_ip):
     return body['result']
 
 
-def tcp_server_specific_msg_count(appmock_ip, tcp_port, message_binary):
+def tcp_server_specific_message_count(appmock_ip, tcp_port, message_binary):
     """
     Returns number of messages exactly matching given message,
     that has been received by the TCP server mock.
     """
     _, _, body = _http_post(appmock_ip, appmock_rc_port,
-                            '/tcp_server_specific_msg_count/' + str(tcp_port),
+                            '/tcp_server_specific_message_count/' + str(tcp_port),
                             True, message_binary)
     body = json.loads(body)
     if body['result'] == 'error':
         raise Exception(
-            'tcp_server_specific_msg_count returned error: ' + body['reason'])
+            'tcp_server_specific_message_count returned error: ' + body['reason'])
     return body['result']
 
 
@@ -111,7 +111,7 @@ def tcp_server_wait_for_specific_messages(appmock_ip, tcp_port, data, msg_count=
     wait_for = WAIT_STARTING_CHECK_INTERVAL
 
     while True:
-        result = tcp_server_specific_msg_count(appmock_ip, tcp_port, data)
+        result = tcp_server_specific_message_count(appmock_ip, tcp_port, data)
         if accept_more and result >= msg_count:
             break
         elif result == msg_count:
