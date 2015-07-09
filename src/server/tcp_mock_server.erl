@@ -215,12 +215,15 @@ handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
             % Check connectivity to all TCP listeners
             lists:foreach(
                 fun({Port, #endpoint{use_ssl = UseSSL}}) ->
-                    Transport = case UseSSL of
-                                    true -> ssl2;
-                                    false -> gen_tcp
-                                end,
-                    {ok, Socket} = Transport:connect("127.0.0.1", Port, []),
-                    Transport:close(Socket)
+                    case UseSSL of
+                        true ->
+                            {ok, Socket} = ssl2:connect("127.0.0.1", Port, []),
+                            ok = ssl2:handshake(Socket),
+                            ssl2:close(Socket);
+                        false ->
+                            {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
+                            gen_tcp:close(Socket)
+                    end
                 end, Endpoints),
             ok
         catch T:M ->
