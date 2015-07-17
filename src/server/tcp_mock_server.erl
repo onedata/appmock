@@ -215,7 +215,7 @@ handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
         try
             % Check connectivity to all TCP listeners
             lists:foreach(
-                fun({Port, #endpoint{use_ssl = UseSSL}}) ->
+                fun(#endpoint{port = Port, use_ssl = UseSSL}) ->
                     case UseSSL of
                         true ->
                             {ok, Socket} = ssl2:connect("127.0.0.1", Port, []),
@@ -224,7 +224,7 @@ handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
                             {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
                             gen_tcp:close(Socket)
                     end
-                end, Endpoints),
+                end, get_all_endpoints(Endpoints)),
             ok
         catch T:M ->
             ?error_stacktrace("Error during ~p healthcheck- ~p:~p", [?MODULE, T, M]),
@@ -493,7 +493,7 @@ get_all_endpoints(#state{endpoints = Endpoints}) ->
 %%--------------------------------------------------------------------
 -spec update_endpoint(Endpoint :: #endpoint{}, State :: #state{}) -> NewState :: #state{}.
 update_endpoint(#endpoint{port = Port} = Endpoint, #state{endpoints = Endpoints}) ->
-    NewDict = dict:update(Port, fun([_]) -> [Endpoint] end, [Endpoint], Endpoints),
+    NewDict = dict:update(Port, fun(_) -> Endpoint end, Endpoint, Endpoints),
     #state{endpoints = NewDict}.
 
 
