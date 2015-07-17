@@ -254,7 +254,7 @@ handle_call({register_packet, Port, Data}, _From, State) ->
                      false -> MsgHistory
                  end,
     NewEndpoint = Endpoint#endpoint{
-        msg_count_per_msg = dict:update(Data, fun([Old]) -> [Old + 1] end, [1], MsgCountPerMsg),
+        msg_count_per_msg = dict:update(Data, fun(Old) -> Old + 1 end, 1, MsgCountPerMsg),
         msg_history = NewHistory,
         msg_count = MsgCount + 1
     },
@@ -266,7 +266,7 @@ handle_call({tcp_server_specific_message_count, Port, Data}, _From, State) ->
                     {error, wrong_endpoint};
                 Endpoint ->
                     case dict:find(Data, Endpoint#endpoint.msg_count_per_msg) of
-                        {ok, [Count]} ->
+                        {ok, Count} ->
                             {ok, Count};
                         error ->
                             {ok, 0}
@@ -468,7 +468,7 @@ start_listeners(AppDescriptionModule) ->
 -spec get_endpoint(Port :: integer(), State :: #state{}) -> #endpoint{} | undefined.
 get_endpoint(Port, #state{endpoints = Endpoints}) ->
     case dict:find(Port, Endpoints) of
-        {ok, [Endpoint]} -> Endpoint;
+        {ok, Endpoint} -> Endpoint;
         error -> undefined
     end.
 
