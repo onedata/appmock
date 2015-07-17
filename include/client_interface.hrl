@@ -120,16 +120,11 @@
 -define(TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_ERROR_WRONG_ENDPOINT,
     [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}]).
 
-% Produces an error message if the tcp server requested to be verified works in counter mode.
--define(TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_ERROR_COUNTER_MODE,
-    [{<<"result">>, <<"error">>}, {<<"reason">>, <<"counter_mode">>}]).
-
 % Retrieves the response from appmock server (client side).
 -define(TCP_SERVER_SPECIFIC_MESSAGE_COUNT_UNPACK_RESPONSE(_RespBody),
     case _RespBody of
         [{<<"result">>, _Count}] -> {ok, _Count};
-        [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}] -> {error, wrong_endpoint};
-        [{<<"result">>, <<"error">>}, {<<"reason">>, <<"counter_mode">>}] -> {error, counter_mode}
+        [{<<"result">>, <<"error">>}, {<<"reason">>, <<"wrong_endpoint">>}] -> {error, wrong_endpoint}
     end
 ).
 
