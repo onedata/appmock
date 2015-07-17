@@ -192,6 +192,8 @@ init([]) ->
     DescriptionModule = appmock_utils:load_description_module(AppDescriptionFile),
     Endpoints = start_listeners(DescriptionModule),
     EndpointMappings = [{Endpoint#endpoint.port, Endpoint} || Endpoint <- Endpoints],
+    ?dump(dict:from_list(EndpointMappings)),
+    ?dump(dict:to_list(dict:from_list(EndpointMappings))),
     {ok, #state{endpoints = dict:from_list(EndpointMappings)}}.
 
 
@@ -210,7 +212,7 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
+handle_call(healthcheck, _From, State) ->
     Reply =
         try
             % Check connectivity to all TCP listeners
@@ -224,7 +226,7 @@ handle_call(healthcheck, _From, #state{endpoints = Endpoints} = State) ->
                             {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
                             gen_tcp:close(Socket)
                     end
-                end, get_all_endpoints(Endpoints)),
+                end, get_all_endpoints(State)),
             ok
         catch T:M ->
             ?error_stacktrace("Error during ~p healthcheck- ~p:~p", [?MODULE, T, M]),
