@@ -192,8 +192,6 @@ init([]) ->
     DescriptionModule = appmock_utils:load_description_module(AppDescriptionFile),
     Endpoints = start_listeners(DescriptionModule),
     EndpointMappings = [{Endpoint#endpoint.port, Endpoint} || Endpoint <- Endpoints],
-    ?dump(dict:from_list(EndpointMappings)),
-    ?dump(dict:to_list(dict:from_list(EndpointMappings))),
     {ok, #state{endpoints = dict:from_list(EndpointMappings)}}.
 
 
