@@ -103,12 +103,12 @@
 % For now, its just bare bytes, but the macro stays so it can be easily changed -
 % for example to base64 encoded.
 -define(TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_REQUEST(_BinaryData),
-    _BinaryData
+    base64:encode(_BinaryData)
 ).
 
 % Retrieves data sent to tcp_server_message_count endpoint (server side).
 -define(TCP_SERVER_SPECIFIC_MESSAGE_COUNT_UNPACK_REQUEST(_BinaryData),
-    _BinaryData
+    base64:decode(_BinaryData)
 ).
 
 % Produces success message which carries information of request count.
@@ -165,12 +165,12 @@
 % For now, its just bare bytes, but the macro stays so it can be easily changed -
 % for example to base64 encoded.
 -define(TCP_SERVER_SEND_PACK_REQUEST(_BinaryData),
-    _BinaryData
+    base64:encode(_BinaryData)
 ).
 
 % Retrieves data sent to tcp_server_send endpoint (server side).
 -define(TCP_SERVER_SEND_UNPACK_REQUEST(_BinaryData),
-    _BinaryData
+    base64:decode(_BinaryData)
 ).
 
 % Produces an error message if sending fails.
