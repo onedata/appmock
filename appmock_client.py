@@ -130,11 +130,10 @@ def tcp_server_wait_for_specific_messages(appmock_ip, tcp_port, message_binary,
     """
     start_time = time.time()
     wait_for = WAIT_STARTING_CHECK_INTERVAL
-    encoded_message = base64.b64encode(message_binary)
 
     while True:
         result = tcp_server_specific_message_count(appmock_ip, tcp_port,
-                                                   encoded_message)
+                                                   message_binary)
         if accept_more and result >= msg_count:
             break
         elif result == msg_count:
@@ -220,6 +219,8 @@ def tcp_server_history(appmock_ip, tcp_port):
     body = json.loads(body)
     if body['result'] == 'error':
         raise Exception('tcp_server_send returned error: ' + body['reason'])
+    for i in range(len(body['result'])):
+        body['result'][i] = base64.b64decode(body['result'][i])
     return body['result']
 
 
