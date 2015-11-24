@@ -77,7 +77,7 @@ rest_endpoint_request_count(Hostname, Port, Path) ->
 verify_rest_history(Hostname, ExpectedOrder) ->
     try
         JSON = json_utils:encode(?VERIFY_REST_HISTORY_PACK_REQUEST(ExpectedOrder)),
-        {200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
+        {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
             <<?VERIFY_REST_HISTORY_PATH>>, [], JSON),
         RespBody = json_utils:decode(RespBodyJSON),
         case RespBody of

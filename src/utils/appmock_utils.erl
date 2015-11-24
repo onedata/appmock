@@ -51,6 +51,10 @@ load_description_module(FilePath) ->
 %% @equiv remote_control_request(Method, Hostname, Path, [])
 %% @end
 %%--------------------------------------------------------------------
+-spec rc_request(Method :: http_client:method(), Hstnm :: string() | binary(),
+    Path :: string() | binary()) ->
+    {ok, http_client:code(), http_client:headers(), http_client:body()} |
+    {error, term()}.
 rc_request(Method, Hostname, Path) ->
     rc_request(Method, Hostname, Path, []).
 
@@ -61,6 +65,10 @@ rc_request(Method, Hostname, Path) ->
 %% @equiv remote_control_request(Method, Hostname, Path, Headers, <<>>)
 %% @end
 %%--------------------------------------------------------------------
+-spec rc_request(Method :: http_client:method(), Hstnm :: string() | binary(),
+    Path :: string() | binary(), Headers :: http_client:headers()) ->
+    {ok, http_client:code(), http_client:headers(), http_client:body()} |
+    {error, term()}.
 rc_request(Method, Hostname, Path, Headers) ->
     rc_request(Method, Hostname, Path, Headers, <<>>).
 
@@ -70,6 +78,11 @@ rc_request(Method, Hostname, Path, Headers) ->
 %% Performs a request on a remote control endpoint running on given Hostname.
 %% @end
 %%--------------------------------------------------------------------
+-spec rc_request(Method :: http_client:method(), Hstnm :: string() | binary(),
+    Path :: string() | binary(), Headers :: http_client:headers(),
+    Body :: http_client:body()) ->
+    {ok, http_client:code(), http_client:headers(), http_client:body()} |
+    {error, term()}.
 rc_request(Method, Hostname, Path, Headers, Body) ->
     {ok, RmteCntrlPort} = application:get_env(?APP_NAME, remote_control_port),
     URL = str_utils:format("https://~s:~B~s", [Hostname, RmteCntrlPort, Path]),
