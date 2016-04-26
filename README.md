@@ -12,9 +12,11 @@ To build *appmock* use `./make.py`.
 
 ## Configuration and Running
 *appmock* can be started using [bamboo](https://github.com/onedata/bamboo) scripts that are included in the repository. From the root of *appmock* project, run:
+
 ```
 ./bamboos/docker/appmock_up.py bamboos/example_env/appmock_example.json
 ```
+
 The `appmock_up.py` script requires a JSON with configuration - simplest one can be found in `bamboos/example_env/appmock_example.json`.
  
 The JSON config includes an entry called `app_description_file.json`. Its value should contain path to configuration file (in Erlang) that will be used to expose required endpoints. The path can be relative (to the JSON file) or absolute.
