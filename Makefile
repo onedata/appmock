@@ -24,17 +24,7 @@ upgrade:
 	./rebar3 upgrade
 
 compile:
-	@echo "======================================================================"
-	@echo "Using $(ONEDATA_GIT_URL) for fetching dependencies                    "
-	@echo "======================================================================"
-	@echo ""
-	@ if [ -f ./rebar.lock ]; then \
-		sed -i.bak "s|ssh://git@git\.plgrid\.pl:7999/vfs|${ONEDATA_GIT_URL}|g" rebar.lock; \
-	fi
 	./rebar3 compile
-	@ if [ -f ./rebar.lock.bak ]; then \
-		mv ./rebar.lock.bak rebar.lock; \
-	fi
 
 rel: compile
 	./rebar3 release
@@ -53,6 +43,15 @@ clean:
 
 distclean: clean
 	./rebar3 clean --all
+
+##
+## Submodules
+##
+
+submodules:
+	git submodule sync --recursive ${submodule}
+	git submodule update --init --recursive ${submodule}
+
 
 ##
 ## Dialyzer targets local

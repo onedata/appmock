@@ -8,7 +8,7 @@
 * python >= 2.7
 
 ## Building
-To build *appmock* use `./make.py`.
+To build *appmock* use `make submodules` then `./make.py`.
 
 ## Configuration and Running
 *appmock* can be started using [bamboo](https://github.com/onedata/bamboo) scripts that are included in the repository. From the root of *appmock* project, run:
