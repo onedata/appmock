@@ -214,12 +214,12 @@ handle_call(healthcheck, _From, State) ->
     try
         % Check connectivity different rest enpoints using some random data
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
-            <<?REST_ENDPOINT_REQUEST_COUNT_PATH>>, [],
+            <<?REST_ENDPOINT_REQUEST_COUNT_PATH>>, #{},
             json_utils:encode(
                 ?REST_ENDPOINT_REQUEST_COUNT_REQUEST(8080, <<"/">>))),
 
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
-            <<?VERIFY_REST_HISTORY_PATH>>, [],
+            <<?VERIFY_REST_HISTORY_PATH>>, #{},
             json_utils:encode(
                 ?VERIFY_REST_HISTORY_PACK_REQUEST([{8080, <<"/">>}]))),
 
@@ -227,7 +227,7 @@ handle_call(healthcheck, _From, State) ->
             <<?RESET_REST_HISTORY_PATH>>),
 
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
-            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PATH(5555), [],
+            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PATH(5555), #{},
             base64:encode(<<"random_data!%$$^&%^&*%^&*">>)),
 
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
@@ -348,16 +348,22 @@ start_remote_control_listener() ->
     {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
     % Start a https listener on given port
     ?info("Starting cowboy listener: ~p (~p)", [?REMOTE_CONTROL_LISTENER, RemoteControlPort]),
-    {ok, _} = cowboy:start_https(
-        ?REMOTE_CONTROL_LISTENER,
-        ?NUMBER_OF_ACCEPTORS,
+
+
+    {ok, _} = ranch:start_listener(?REMOTE_CONTROL_LISTENER, ranch_ssl,
         [
+            {num_acceptors, ?NUMBER_OF_ACCEPTORS},
             {port, RemoteControlPort},
             {cacertfile, CaCertFile},
             {certfile, CertFile},
-            {keyfile, KeyFile}
+            {keyfile, KeyFile},
+            {next_protocols_advertised, [<<"http/1.1">>]},
+            {alpn_preferred_protocols, [<<"http/1.1">>]}
         ],
-        [
-            {env, [{dispatch, Dispatch}]}
-        ]),
+        cowboy_tls, #{
+            env => #{dispatch => Dispatch},
+            connection_type => supervisor,
+            idle_timeout => infinity,
+            inactivity_timeout => timer:hours(24)
+        }),
     ok.

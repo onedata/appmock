@@ -56,7 +56,7 @@ load_description_module(FilePath) ->
     {ok, http_client:code(), http_client:headers(), http_client:body()} |
     {error, term()}.
 rc_request(Method, Hostname, Path) ->
-    rc_request(Method, Hostname, Path, []).
+    rc_request(Method, Hostname, Path, #{}).
 
 
 %%--------------------------------------------------------------------
@@ -85,9 +85,9 @@ rc_request(Method, Hostname, Path, Headers) ->
     {error, term()}.
 rc_request(Method, Hostname, Path, Headers, Body) ->
     {ok, RmteCntrlPort} = application:get_env(?APP_NAME, remote_control_port),
-    URL = str_utils:format("https://~s:~B~s", [Hostname, RmteCntrlPort, Path]),
+    URL = str_utils:format_bin("https://~s:~B~s", [Hostname, RmteCntrlPort, Path]),
     % insecure option disables server cert verification
-    http_client:request(Method, URL, Headers, Body, [insecure]).
+    http_client:request(Method, URL, Headers, Body, [{ssl_options, [{secure, false}]}]).
 
 
 %%%===================================================================

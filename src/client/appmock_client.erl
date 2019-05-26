@@ -51,7 +51,7 @@ rest_endpoint_request_count(Hostname, Port, Path) ->
     try
         JSON = json_utils:encode(?REST_ENDPOINT_REQUEST_COUNT_REQUEST(Port, Path)),
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
-            ?REST_ENDPOINT_REQUEST_COUNT_PATH, [], JSON),
+            ?REST_ENDPOINT_REQUEST_COUNT_PATH, #{}, JSON),
         RespBody = json_utils:decode(RespBodyJSON),
         ?REST_ENDPOINT_REQUEST_COUNT_UNPACK_RESPONSE(RespBody)
     catch T:M ->
@@ -78,10 +78,10 @@ verify_rest_history(Hostname, ExpectedOrder) ->
     try
         JSON = json_utils:encode(?VERIFY_REST_HISTORY_PACK_REQUEST(ExpectedOrder)),
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
-            <<?VERIFY_REST_HISTORY_PATH>>, [], JSON),
+            <<?VERIFY_REST_HISTORY_PATH>>, #{}, JSON),
         RespBody = json_utils:decode(RespBodyJSON),
         case RespBody of
-            ?TRUE_RESULT ->
+            ?TRUE_RESULT_PATTERN ->
                 true;
             _ ->
                 History = ?VERIFY_REST_HISTORY_UNPACK_ERROR(RespBody),
@@ -106,7 +106,7 @@ reset_rest_history(Hostname) ->
             ?RESET_REST_HISTORY_PATH),
         RespBody = json_utils:decode(RespBodyJSON),
         case RespBody of
-            ?TRUE_RESULT ->
+            ?TRUE_RESULT_PATTERN ->
                 true
         end
     catch T:M ->
@@ -128,7 +128,7 @@ reset_rest_history(Hostname) ->
 tcp_server_specific_message_count(Hostname, Port, Data) ->
     try
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
-            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PATH(Port), [],
+            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PATH(Port), #{},
             ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_REQUEST(Data)),
         RespBody = json_utils:decode(RespBodyJSON),
         ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_UNPACK_RESPONSE(RespBody)
@@ -265,11 +265,11 @@ tcp_server_wait_for_any_messages(Hostname, Port, MessageCount, AcceptMore, Retur
 tcp_server_send(Hostname, Port, Data, MessageCount) ->
     try
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
-            ?TCP_SERVER_SEND_PATH(Port, MessageCount), [],
+            ?TCP_SERVER_SEND_PATH(Port, MessageCount), #{},
             ?TCP_SERVER_SEND_PACK_REQUEST(Data)),
         RespBody = json_utils:decode(RespBodyJSON),
         case RespBody of
-            ?TRUE_RESULT ->
+            ?TRUE_RESULT_PATTERN ->
                 true;
             _ ->
                 ?TCP_SERVER_SEND_UNPACK_ERROR(RespBody)
@@ -294,7 +294,7 @@ reset_tcp_server_history(Hostname) ->
             ?RESET_TCP_SERVER_HISTORY_PATH),
         RespBody = json_utils:decode(RespBodyJSON),
         case RespBody of
-            ?TRUE_RESULT ->
+            ?TRUE_RESULT_PATTERN ->
                 true
         end
     catch T:M ->
@@ -332,7 +332,7 @@ tcp_server_history(Hostname, Port) ->
 tcp_server_connection_count(Hostname, Port) ->
     try
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
-            ?TCP_SERVER_CONNECTION_COUNT_PATH(Port), [],
+            ?TCP_SERVER_CONNECTION_COUNT_PATH(Port), #{},
             ?TCP_SERVER_CONNECTION_COUNT_PACK_REQUEST),
         RespBody = json_utils:decode(RespBodyJSON),
         ?TCP_SERVER_CONNECTION_COUNT_UNPACK_RESPONSE(RespBody)
