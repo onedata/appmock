@@ -288,21 +288,15 @@ handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
             {error, wrong_endpoint};
         Endpoint ->
             Timeout = ?SEND_TIMEOUT_BASE + Count * ?SEND_TIMEOUT_PER_MSG,
-            Result = utils:pmap(
-                fun(Pid) ->
-                    Pid ! {self(), send, Data, Count},
-                    receive
-                        {Pid, ok} -> ok
-                    after
-                        Timeout -> error
-                    end
-                end, Endpoint#endpoint.connections),
-            % If all pids reported back, sending succeded
-            case lists:duplicate(length(Result), ok) of
-                Result ->
-                    true;
-                _ ->
-                    ?error("failed_to_send_data: ~p", [Result]),
+            RandomConnection = utils:random_element(Endpoint#endpoint.connections),
+            RandomConnection ! {self(), send, Data, Count},
+            receive
+                {RandomConnection, ok} ->
+                    true
+            after
+                Timeout ->
+                    ?error("failed to send data via connection ~p: timeout",
+                           [RandomConnection]),
                     {error, failed_to_send_data}
             end
     end,
