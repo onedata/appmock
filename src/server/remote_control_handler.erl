@@ -59,8 +59,8 @@ init(Req, State) ->
 handle_request(?NAGIOS_ENPOINT, Req) ->
     HealthcheckResponses = [
         rest_mock_server:healthcheck(),
-        remote_control_server:healthcheck(),
-        tcp_mock_server:healthcheck()
+        tcp_mock_server:healthcheck(),
+        remote_control_server:healthcheck()
     ],
 
     AppStatus = case lists:duplicate(length(HealthcheckResponses), ok) of
@@ -130,7 +130,6 @@ handle_request(?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_COWBOY_ROUTE, Req) ->
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
-
 handle_request(?TCP_SERVER_ALL_MESSAGES_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
     Port = binary_to_integer(PortBin),
@@ -142,7 +141,6 @@ handle_request(?TCP_SERVER_ALL_MESSAGES_COUNT_COWBOY_ROUTE, Req) ->
                 end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
-
 
 handle_request(?TCP_SERVER_SEND_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -195,4 +193,11 @@ handle_request(?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, Req) ->
                         ?TCP_SERVER_CONNECTION_COUNT_PACK_ERROR_WRONG_ENDPOINT
                 end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
+    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+
+handle_request(?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE, Req) ->
+    Port = binary_to_integer(req:binding(port, Req)),
+    DurationSeconds = binary_to_integer(req:binding(duration_seconds, Req)),
+    true = remote_control_server:tcp_server_simulate_downtime(Port, DurationSeconds),
+    Req2 = cowboy_req:set_resp_body(json_utils:encode(?TRUE_RESULT), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2).

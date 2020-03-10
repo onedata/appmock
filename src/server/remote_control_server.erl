@@ -27,6 +27,7 @@
 
 -export([tcp_server_specific_message_count/2, tcp_server_all_messages_count/1, tcp_server_send/3]).
 -export([tcp_mock_history/1, reset_tcp_mock_history/0, tcp_server_connection_count/1]).
+-export([tcp_server_simulate_downtime/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -146,6 +147,16 @@ tcp_server_send(Port, Data, Count) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% Simulates server downtime - stops the server for given duration and starts it again.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_simulate_downtime(Port :: integer(), DurationSeconds :: integer()) -> true | {error, term()}.
+tcp_server_simulate_downtime(Port, Data) ->
+    tcp_mock_server:tcp_server_simulate_downtime(Port, Data).
+
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Returns full history of messages received on given endpoint.
 %% @end
 %%--------------------------------------------------------------------
@@ -212,7 +223,7 @@ init([]) ->
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call(healthcheck, _From, State) ->
     try
-        % Check connectivity different rest enpoints using some random data
+        % Check connectivity different rest endpoints using some random data
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
             <<?REST_ENDPOINT_REQUEST_COUNT_PATH>>, #{},
             json_utils:encode(
@@ -241,6 +252,11 @@ handle_call(healthcheck, _From, State) ->
 
         {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
             ?TCP_SERVER_CONNECTION_COUNT_PATH(5555)),
+
+        {ok, 200, _, _} = appmock_utils:rc_request(get, <<"127.0.0.1">>,
+            ?TCP_SERVER_SIMULATE_DOWNTIME_PATH(5555, 0)),
+        % Allow some time for the server to come back up
+        timer:sleep(500),
 
         {reply, ok, State}
     catch T:M ->
@@ -339,7 +355,8 @@ start_remote_control_listener() ->
             {?TCP_SERVER_HISTORY_COWBOY_ROUTE, remote_control_handler, [?TCP_SERVER_HISTORY_COWBOY_ROUTE]},
             {?TCP_SERVER_SEND_COWBOY_ROUTE, remote_control_handler, [?TCP_SERVER_SEND_COWBOY_ROUTE]},
             {?RESET_TCP_SERVER_HISTORY_PATH, remote_control_handler, [?RESET_TCP_SERVER_HISTORY_PATH]},
-            {?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, remote_control_handler, [?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE]}
+            {?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, remote_control_handler, [?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE]},
+            {?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE, remote_control_handler, [?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE]}
         ]}
     ]),
     % Load certificates' paths from env

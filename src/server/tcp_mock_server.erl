@@ -25,6 +25,7 @@
 -export([report_connection_state/3, register_packet/2]).
 -export([tcp_server_specific_message_count/2, tcp_server_all_messages_count/1, tcp_server_send/3]).
 -export([tcp_mock_history/1, reset_tcp_mock_history/0, tcp_server_connection_count/1]).
+-export([tcp_server_simulate_downtime/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -191,6 +192,16 @@ reset_tcp_mock_history() ->
 tcp_server_connection_count(Port) ->
     gen_server:call(?SERVER, {tcp_server_connection_count, Port}).
 
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Simulates server downtime - stops the server for given duration and starts it again.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_simulate_downtime(Port :: integer(), DurationSeconds :: integer()) -> true | {error, term()}.
+tcp_server_simulate_downtime(Port, DurationSeconds) ->
+    gen_server:call(?SERVER, {tcp_server_simulate_downtime, Port, DurationSeconds}, infinity).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -199,16 +210,14 @@ tcp_server_connection_count(Port) ->
 %% @private
 %% @doc
 %% Initializes the appmock application by creating an ETS table, initializing records in it,
-%% loading given mock app description module and starting cowboy listenera.
+%% loading given mock app description module and starting cowboy listeners.
 %% @end
 %%--------------------------------------------------------------------
 -spec(init(Args :: term()) ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    {ok, AppDescriptionFile} = application:get_env(?APP_NAME, app_description_file),
-    DescriptionModule = appmock_utils:load_description_module(AppDescriptionFile),
-    Endpoints = start_listeners(DescriptionModule),
+    Endpoints = start_listeners(),
     EndpointMappings = [{Endpoint#endpoint.port, Endpoint} || Endpoint <- Endpoints],
     {ok, #state{endpoints = dict:from_list(EndpointMappings)}}.
 
@@ -296,7 +305,7 @@ handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
             after
                 Timeout ->
                     ?error("failed to send data via connection ~p: timeout",
-                           [RandomConnection]),
+                        [RandomConnection]),
                     {error, failed_to_send_data}
             end
     end,
@@ -334,6 +343,26 @@ handle_call({tcp_server_connection_count, Port}, _From, State) ->
             {error, wrong_endpoint};
         Endpoint ->
             {ok, length(Endpoint#endpoint.connections)}
+    end,
+    {reply, Reply, State};
+
+handle_call({tcp_server_simulate_downtime, Port, DurationSeconds}, _From, State) ->
+    Reply = case get_endpoint(Port, State) of
+        undefined ->
+            {error, wrong_endpoint};
+        Endpoint ->
+            spawn(fun() ->
+                ?notice("simulate_downtime: stopping TCP server at port ~B for ~B sec...", [
+                    Port, DurationSeconds
+                ]),
+                Endpoint = get_endpoint(Port, State),
+                stop_listener(Endpoint),
+                timer:sleep(timer:seconds(DurationSeconds)),
+                ?notice("simulate_downtime: restarting TCP server..."),
+                start_listener(Endpoint),
+                ?notice("simulate_downtime: TCP server restarted")
+            end),
+            true
     end,
     {reply, Reply, State};
 
@@ -416,40 +445,67 @@ code_change(_OldVsn, State, _Extra) ->
 %% @private
 %% @doc
 %% Starts all TCP servers that were specified in the app description module.
-%% Returns a list of lsitener IDs and a list of ports on which servers have been started.
+%% Returns a list of listener IDs and a list of ports on which servers have been started.
 %% @end
 %%--------------------------------------------------------------------
--spec start_listeners(AppDescriptionModule :: module()) -> [#endpoint{}].
-start_listeners(AppDescriptionModule) ->
+-spec start_listeners() -> [#endpoint{}].
+start_listeners() ->
+    {ok, AppDescriptionFile} = application:get_env(?APP_NAME, app_description_file),
+    AppDescriptionModule = appmock_utils:load_description_module(AppDescriptionFile),
     TCPServerMocks = AppDescriptionModule:tcp_server_mocks(),
-    lists:map(
-        fun(#tcp_server_mock{port = Port, ssl = UseSSL, packet = Packet,
-            http_upgrade_mode = HttpUpgradeMode, type = Type}) ->
-            % Generate listener name
-            ListenerID = "tcp" ++ integer_to_list(Port),
-            Protocol = case UseSSL of
-                true -> ranch_ssl;
-                false -> ranch_tcp
-            end,
-            Opts = case UseSSL of
-                true ->
-                    {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
-                    {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
-                    {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
-                    [
-                        {port, Port},
-                        {cacertfile, CaCertFile},
-                        {certfile, CertFile},
-                        {keyfile, KeyFile}
-                    ];
-                false ->
-                    [{port, Port}]
-            end,
-            {ok, _} = ranch:start_listener(ListenerID, ?NUMBER_OF_ACCEPTORS,
-                Protocol, Opts, tcp_mock_handler, [Port, Packet, HttpUpgradeMode]),
-            HistoryEnabled = case Type of history -> true; _ -> false end,
-            #endpoint{name = ListenerID, port = Port, use_ssl = UseSSL, history_enabled = HistoryEnabled}
-        end, TCPServerMocks).
+    lists:map(fun start_listener/1, TCPServerMocks).
+
+
+%% @private
+-spec start_listener(#tcp_server_mock{} | #endpoint{}) -> #endpoint{}.
+start_listener(#endpoint{port = Port} = Endpoint) ->
+    {ok, AppDescriptionFile} = application:get_env(?APP_NAME, app_description_file),
+    AppDescriptionModule = appmock_utils:load_description_module(AppDescriptionFile),
+    TCPServerMocks = AppDescriptionModule:tcp_server_mocks(),
+    TcpServerMockDesc = lists:foldl(fun
+        (TCPServerMock, undefined) ->
+            case TCPServerMock of
+                #tcp_server_mock{port = Port} -> TCPServerMock;
+                _ -> undefined
+            end;
+        (_TCPServerMock, Acc) ->
+            Acc
+    end, undefined, TCPServerMocks),
+    case TcpServerMockDesc of
+        undefined -> error({endpoint_not_found, Endpoint});
+        _ -> start_listener(TcpServerMockDesc)
+    end;
+start_listener(#tcp_server_mock{port = Port, ssl = UseSSL, packet = Packet,
+    http_upgrade_mode = HttpUpgradeMode, type = Type}) ->
+    ListenerID = "tcp" ++ integer_to_list(Port),
+    Protocol = case UseSSL of
+        true -> ranch_ssl;
+        false -> ranch_tcp
+    end,
+    Opts = case UseSSL of
+        true ->
+            {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
+            {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
+            {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
+            [
+                {port, Port},
+                {cacertfile, CaCertFile},
+                {certfile, CertFile},
+                {keyfile, KeyFile}
+            ];
+        false ->
+            [{port, Port}]
+    end,
+    {ok, _} = ranch:start_listener(ListenerID, ?NUMBER_OF_ACCEPTORS,
+        Protocol, Opts, tcp_mock_handler, [Port, Packet, HttpUpgradeMode]),
+    HistoryEnabled = case Type of history -> true; _ -> false end,
+    #endpoint{name = ListenerID, port = Port, use_ssl = UseSSL, history_enabled = HistoryEnabled}.
+
+
+%% @private
+-spec stop_listener(#endpoint{}) -> ok | {error, not_found}.
+stop_listener(#endpoint{name = Name}) ->
+    ranch:stop_listener(Name).
 
 
 %%--------------------------------------------------------------------
