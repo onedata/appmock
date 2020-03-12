@@ -24,6 +24,7 @@
 -export([tcp_server_all_messages_count/2, tcp_server_wait_for_any_messages/6]).
 -export([tcp_server_send/4, tcp_server_history/2, reset_tcp_server_history/1]).
 -export([tcp_server_connection_count/2, tcp_server_wait_for_connections/5]).
+-export([tcp_server_simulate_downtime/3]).
 
 % These defines determine how often the appmock server will be requested to check for condition
 % when waiting for something. Increment rate causes each next interval to be longer
@@ -378,3 +379,25 @@ tcp_server_wait_for_connections(Hostname, Port, ConnNumber, AcceptMore, Timeout)
     end.
 
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Simulates server downtime - stops the server for given duration and starts it again.
+%% @end
+%%--------------------------------------------------------------------
+-spec tcp_server_simulate_downtime(Hostname :: binary(), Port :: integer(), DurationSeconds :: integer()) ->
+    true | {error, term()}.
+tcp_server_simulate_downtime(Hostname, Port, DurationSeconds) ->
+    try
+        {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
+            ?TCP_SERVER_SIMULATE_DOWNTIME_PATH(Port, DurationSeconds), #{}),
+        RespBody = json_utils:decode(RespBodyJSON),
+        case RespBody of
+            ?TRUE_RESULT_PATTERN ->
+                true;
+            _ ->
+                ?TCP_SERVER_SIMULATE_DOWNTIME_UNPACK_ERROR(RespBody)
+        end
+    catch T:M ->
+        ?error("Error in tcp_server_simulate_downtime - ~p:~p", [T, M]),
+        {error, M}
+    end.

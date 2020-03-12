@@ -294,3 +294,21 @@
 ).
 
 
+%%--------------------------------------------------------------------
+% Endpoint used to simulate server downtime.
+-define(TCP_SERVER_SIMULATE_DOWNTIME_PATH(_Port, _DurationSeconds),
+    str_utils:format("/tcp_server_simulate_downtime/~B/~B", [_Port, _DurationSeconds])
+).
+-define(TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE,
+    "/tcp_server_simulate_downtime/:port/:duration_seconds").
+
+% No data is required to be sent
+-define(TCP_SERVER_SIMULATE_DOWNTIME_PACK_REQUEST, []).
+
+% Retrieves the response from appmock server (client side).
+-define(TCP_SERVER_SIMULATE_DOWNTIME_UNPACK_ERROR(_RespBody),
+    case _RespBody of
+        #{<<"result">> := <<"error">>, <<"reason">> := <<"wrong_endpoint">>} ->
+            {error, wrong_endpoint}
+    end
+).
