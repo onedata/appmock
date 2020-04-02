@@ -297,7 +297,7 @@ handle_call({tcp_server_send, Port, Data, Count}, _From, State) ->
             {error, wrong_endpoint};
         Endpoint ->
             Timeout = ?SEND_TIMEOUT_BASE + Count * ?SEND_TIMEOUT_PER_MSG,
-            RandomConnection = utils:random_element(Endpoint#endpoint.connections),
+            RandomConnection = lists_utils:random_element(Endpoint#endpoint.connections),
             RandomConnection ! {self(), send, Data, Count},
             receive
                 {RandomConnection, ok} ->
