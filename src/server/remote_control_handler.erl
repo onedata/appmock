@@ -64,9 +64,9 @@ handle_request(?NAGIOS_ENPOINT, Req) ->
     ],
 
     AppStatus = case lists:duplicate(length(HealthcheckResponses), ok) of
-                    HealthcheckResponses -> ok;
-                    _ -> error
-                end,
+        HealthcheckResponses -> ok;
+        _ -> error
+    end,
 
     {{YY, MM, DD}, {Hour, Min, Sec}} = calendar:now_to_local_time(erlang:timestamp()),
     DateString = str_utils:format("~4..0w/~2..0w/~2..0w ~2..0w:~2..0w:~2..0w", [YY, MM, DD, Hour, Min, Sec]),
@@ -85,11 +85,11 @@ handle_request(?REST_ENDPOINT_REQUEST_COUNT_PATH, Req) ->
     {Port, Path} = ?REST_ENDPOINT_REQUEST_COUNT_UNPACK_REQUEST(Body),
     % Verify the endpoint and return the result encoded to JSON.
     ReplyTerm = case remote_control_server:rest_endpoint_request_count(Port, Path) of
-                    {ok, Count} ->
-                        ?REST_ENDPOINT_REQUEST_COUNT_PACK_RESPONSE(Count);
-                    {error, wrong_endpoint} ->
-                        ?REST_ENDPOINT_REQUEST_COUNT_PACK_ERROR_WRONG_ENDPOINT
-                end,
+        {ok, Count} ->
+            ?REST_ENDPOINT_REQUEST_COUNT_PACK_RESPONSE(Count);
+        {error, wrong_endpoint} ->
+            ?REST_ENDPOINT_REQUEST_COUNT_PACK_ERROR_WRONG_ENDPOINT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -99,19 +99,19 @@ handle_request(?VERIFY_REST_HISTORY_PATH, Req) ->
     History = ?VERIFY_REST_HISTORY_UNPACK_REQUEST(BodyStruct),
     % Verify the history and return the result encoded to JSON.
     ReplyTerm = case remote_control_server:verify_rest_mock_history(History) of
-                    true ->
-                        ?TRUE_RESULT;
-                    {false, ActualHistory} ->
-                        ?VERIFY_REST_HISTORY_PACK_ERROR(ActualHistory)
-                end,
+        true ->
+            ?TRUE_RESULT;
+        {false, ActualHistory} ->
+            ?VERIFY_REST_HISTORY_PACK_ERROR(ActualHistory)
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
 handle_request(?RESET_REST_HISTORY_PATH, Req) ->
     ReplyTerm = case remote_control_server:reset_rest_mock_history() of
-                    true ->
-                        ?TRUE_RESULT
-                end,
+        true ->
+            ?TRUE_RESULT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -122,11 +122,11 @@ handle_request(?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_COWBOY_ROUTE, Req) ->
     {ok, BodyRaw, _} = cowboy_req:read_body(Req),
     Data = ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_UNPACK_REQUEST(BodyRaw),
     ReplyTerm = case remote_control_server:tcp_server_specific_message_count(Port, Data) of
-                    {ok, Count} ->
-                        ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_RESPONSE(Count);
-                    {error, wrong_endpoint} ->
-                        ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_ERROR_WRONG_ENDPOINT
-                end,
+        {ok, Count} ->
+            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_RESPONSE(Count);
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_ERROR_WRONG_ENDPOINT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -134,11 +134,11 @@ handle_request(?TCP_SERVER_ALL_MESSAGES_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
     Port = binary_to_integer(PortBin),
     ReplyTerm = case remote_control_server:tcp_server_all_messages_count(Port) of
-                    {ok, Count} ->
-                        ?TCP_SERVER_ALL_MESSAGES_COUNT_PACK_RESPONSE(Count);
-                    {error, wrong_endpoint} ->
-                        ?TCP_SERVER_ALL_MESSAGES_COUNT_PACK_ERROR_WRONG_ENDPOINT
-                end,
+        {ok, Count} ->
+            ?TCP_SERVER_ALL_MESSAGES_COUNT_PACK_RESPONSE(Count);
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_ALL_MESSAGES_COUNT_PACK_ERROR_WRONG_ENDPOINT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -151,13 +151,13 @@ handle_request(?TCP_SERVER_SEND_COWBOY_ROUTE, Req) ->
     {ok, BodyRaw, _} = cowboy_req:read_body(Req),
     Data = ?TCP_SERVER_SEND_UNPACK_REQUEST(BodyRaw),
     ReplyTerm = case remote_control_server:tcp_server_send(Port, Data, Count) of
-                    true ->
-                        ?TRUE_RESULT;
-                    {error, failed_to_send_data} ->
-                        ?TCP_SERVER_SEND_PACK_SEND_FAILED_ERROR;
-                    {error, wrong_endpoint} ->
-                        ?TCP_SERVER_SEND_PACK_WRONG_ENDPOINT_ERROR
-                end,
+        true ->
+            ?TRUE_RESULT;
+        {error, failed_to_send_data} ->
+            ?TCP_SERVER_SEND_PACK_SEND_FAILED_ERROR;
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_SEND_PACK_WRONG_ENDPOINT_ERROR
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -165,21 +165,21 @@ handle_request(?TCP_SERVER_HISTORY_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
     Port = binary_to_integer(PortBin),
     ReplyTerm = case remote_control_server:tcp_mock_history(Port) of
-                    {ok, Messages} ->
-                        ?TCP_SERVER_HISTORY_PACK_RESPONSE(Messages);
-                    {error, wrong_endpoint} ->
-                        ?TCP_SERVER_HISTORY_PACK_ERROR_WRONG_ENDPOINT;
-                    {error, counter_mode} ->
-                        ?TCP_SERVER_HISTORY_PACK_ERROR_COUNTER_MODE
-                end,
+        {ok, Messages} ->
+            ?TCP_SERVER_HISTORY_PACK_RESPONSE(Messages);
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_HISTORY_PACK_ERROR_WRONG_ENDPOINT;
+        {error, counter_mode} ->
+            ?TCP_SERVER_HISTORY_PACK_ERROR_COUNTER_MODE
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
 handle_request(?RESET_TCP_SERVER_HISTORY_PATH, Req) ->
     ReplyTerm = case remote_control_server:reset_tcp_mock_history() of
-                    true ->
-                        ?TRUE_RESULT
-                end,
+        true ->
+            ?TRUE_RESULT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
@@ -187,17 +187,22 @@ handle_request(?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
     Port = binary_to_integer(PortBin),
     ReplyTerm = case remote_control_server:tcp_server_connection_count(Port) of
-                    {ok, Count} ->
-                        ?TCP_SERVER_CONNECTION_COUNT_PACK_RESPONSE(Count);
-                    {error, wrong_endpoint} ->
-                        ?TCP_SERVER_CONNECTION_COUNT_PACK_ERROR_WRONG_ENDPOINT
-                end,
+        {ok, Count} ->
+            ?TCP_SERVER_CONNECTION_COUNT_PACK_RESPONSE(Count);
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_CONNECTION_COUNT_PACK_ERROR_WRONG_ENDPOINT
+    end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE, Req) ->
     Port = binary_to_integer(req:binding(port, Req)),
     DurationSeconds = binary_to_integer(req:binding(duration_seconds, Req)),
-    true = remote_control_server:tcp_server_simulate_downtime(Port, DurationSeconds),
-    Req2 = cowboy_req:set_resp_body(json_utils:encode(?TRUE_RESULT), Req),
+    ReplyTerm = case remote_control_server:tcp_server_simulate_downtime(Port, DurationSeconds) of
+        true ->
+            ?TRUE_RESULT;
+        {error, wrong_endpoint} ->
+            ?TCP_SERVER_SIMULATE_DOWNTIME_PACK_ERROR_WRONG_ENDPOINT
+    end,
+    Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
     cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2).
