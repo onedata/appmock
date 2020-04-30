@@ -305,6 +305,14 @@
 % No data is required to be sent
 -define(TCP_SERVER_SIMULATE_DOWNTIME_PACK_REQUEST, []).
 
+% Produces an error message if the tcp server
+% requested to be temporarily turned off does not exist (server side).
+-define(TCP_SERVER_SIMULATE_DOWNTIME_PACK_ERROR_WRONG_ENDPOINT,
+    #{
+        <<"result">> => <<"error">>,
+        <<"reason">> => <<"wrong_endpoint">>
+    }).
+
 % Retrieves the response from appmock server (client side).
 -define(TCP_SERVER_SIMULATE_DOWNTIME_UNPACK_ERROR(_RespBody),
     case _RespBody of
