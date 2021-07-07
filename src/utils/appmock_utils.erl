@@ -39,9 +39,9 @@ load_description_module(FilePath) ->
         erlang:load_module(ModuleName, Bin),
         cleanup_tmp_copy(FilePath, TmpFileCopyPath),
         ModuleName
-    catch T:M ->
+    catch T:M:S ->
         cleanup_tmp_copy(FilePath, convert_from_cfg_to_erl_ext(FilePath)),
-        throw({invalid_app_description_module, {type, T}, {message, M}, {stacktrace, erlang:get_stacktrace()}})
+        throw({invalid_app_description_module, {type, T}, {message, M}, {stacktrace, S}})
     end.
 
 
