@@ -48,7 +48,7 @@ start_link(Ref, Transport, Opts) ->
 -spec init(Ref :: ranch:ref(), Transport :: module(), ProtoOpts :: term()) -> term().
 init(Ref, Transport, [Port, Packet, HttpUpgradeMode]) ->
     {ok, Socket} = ranch:handshake(Ref),
-    {OK, _Closed, _Error} = Transport:messages(),
+    {OK, _Closed, _Error, _Passive} = Transport:messages(),
     tcp_mock_server:report_connection_state(Port, self(), true),
     case HttpUpgradeMode of
         false ->
@@ -82,7 +82,7 @@ init_http_upgrade_server(Socket, Transport, Port, OK, Packet, UpgradePath, Proto
                     error
             end;
         Other ->
-            ?error("Failure awaiting for protocol upgrade: ~p", [Other]),
+            ?error("Failure awaiting protocol upgrade: ~p", [Other]),
             error
     after
         timer:minutes(5) ->

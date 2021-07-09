@@ -485,6 +485,7 @@ start_listener(#tcp_server_mock{port = Port, ssl = UseSSL, packet = Packet,
     Opts = #{
         num_acceptors => ?NUMBER_OF_ACCEPTORS,
         socket_opts => lists:flatten([
+            {ip, any},
             {port, Port},
             case UseSSL of
                 true ->
