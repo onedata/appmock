@@ -125,7 +125,7 @@ reset_rest_history(Hostname) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec tcp_server_specific_message_count(Hostname :: binary(), Port :: integer(), Data :: binary()) ->
-    integer() | {error, term()}.
+    {ok, integer()} | {error, term()}.
 tcp_server_specific_message_count(Hostname, Port, Data) ->
     try
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,
@@ -193,7 +193,7 @@ tcp_server_wait_for_specific_messages(Hostname, Port, Data, MessageCount, Accept
 %% @end
 %%--------------------------------------------------------------------
 -spec tcp_server_all_messages_count(Hostname :: binary(), Port :: integer()) ->
-    integer() | {error, term()}.
+    {ok, integer()} | {error, term()}.
 tcp_server_all_messages_count(Hostname, Port) ->
     try
         {ok, 200, _, RespBodyJSON} = appmock_utils:rc_request(post, Hostname,

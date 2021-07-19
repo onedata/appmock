@@ -17,8 +17,9 @@
 -include("appmock_internal.hrl").
 
 %% Ranch API
--export([start_link/4]).
--export([init/4]).
+-export([start_link/3]).
+
+-export([init/3]).
 
 % How long should the process wait for data on socket before it loops again.
 -define(POLLING_PERIOD, 100).
@@ -32,10 +33,10 @@
 %% Ranch callback, called to spawn a new handler process for a connection.
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(Ref :: ranch:ref(), Socket :: term(), Transport :: module(), ProtoOpts :: term()) ->
+-spec start_link(Ref :: ranch:ref(), Transport :: module(), ProtoOpts :: term()) ->
     {ok, ConnectionPid :: pid()}.
-start_link(Ref, Socket, Transport, Opts) ->
-    Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
+start_link(Ref, Transport, Opts) ->
+    Pid = spawn_link(?MODULE, init, [Ref, Transport, Opts]),
     {ok, Pid}.
 
 
@@ -44,10 +45,10 @@ start_link(Ref, Socket, Transport, Opts) ->
 %% Init function will be called by the newly spawned process.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Ref :: ranch:ref(), Socket :: term(), Transport :: module(), ProtoOpts :: term()) -> term().
-init(Ref, Socket, Transport, [Port, Packet, HttpUpgradeMode]) ->
-    ok = ranch:accept_ack(Ref),
-    {OK, _Closed, _Error} = Transport:messages(),
+-spec init(Ref :: ranch:ref(), Transport :: module(), ProtoOpts :: term()) -> term().
+init(Ref, Transport, [Port, Packet, HttpUpgradeMode]) ->
+    {ok, Socket} = ranch:handshake(Ref),
+    {OK, _Closed, _Error, _Passive} = Transport:messages(),
     tcp_mock_server:report_connection_state(Port, self(), true),
     case HttpUpgradeMode of
         false ->
@@ -81,7 +82,7 @@ init_http_upgrade_server(Socket, Transport, Port, OK, Packet, UpgradePath, Proto
                     error
             end;
         Other ->
-            ?error("Failure awaiting for protocol upgrade: ~p", [Other]),
+            ?error("Failure awaiting protocol upgrade: ~p", [Other]),
             error
     after
         timer:minutes(5) ->

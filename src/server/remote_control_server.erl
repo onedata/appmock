@@ -366,21 +366,33 @@ start_remote_control_listener() ->
     % Start a https listener on given port
     ?info("Starting cowboy listener: ~p (~p)", [?REMOTE_CONTROL_LISTENER, RemoteControlPort]),
 
-
-    {ok, _} = ranch:start_listener(?REMOTE_CONTROL_LISTENER, ranch_ssl,
-        [
-            {num_acceptors, ?NUMBER_OF_ACCEPTORS},
+    RanchOpts = #{
+        connection_type => supervisor,
+        num_acceptors => ?NUMBER_OF_ACCEPTORS,
+        % options specific for the transport (SSL)
+        socket_opts => lists:flatten([
+            {ip, any},
             {port, RemoteControlPort},
-            {cacertfile, CaCertFile},
-            {certfile, CertFile},
             {keyfile, KeyFile},
+            {certfile, CertFile},
+            {ciphers, ssl_utils:safe_ciphers()},
             {next_protocols_advertised, [<<"http/1.1">>]},
-            {alpn_preferred_protocols, [<<"http/1.1">>]}
-        ],
-        cowboy_tls, #{
-            env => #{dispatch => Dispatch},
-            connection_type => supervisor,
-            idle_timeout => infinity,
-            inactivity_timeout => timer:hours(24)
-        }),
+            {alpn_preferred_protocols, [<<"http/1.1">>]},
+            case filelib:is_regular(CaCertFile) of
+                true ->
+                    {cacertfile, CaCertFile};
+                _ ->
+                    []
+            end
+        ])
+    },
+
+    CowboyOpts = #{
+        env => #{dispatch => Dispatch},
+        idle_timeout => infinity,
+        inactivity_timeout => timer:hours(24)
+    },
+
+
+    {ok, _} = ranch:start_listener(?REMOTE_CONTROL_LISTENER, ranch_ssl, RanchOpts, cowboy_tls, CowboyOpts),
     ok.

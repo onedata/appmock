@@ -477,29 +477,37 @@ start_listener(#endpoint{port = Port} = Endpoint) ->
     end;
 start_listener(#tcp_server_mock{port = Port, ssl = UseSSL, packet = Packet,
     http_upgrade_mode = HttpUpgradeMode, type = Type}) ->
-    ListenerID = "tcp" ++ integer_to_list(Port),
-    Protocol = case UseSSL of
+    ListenerId = "tcp" ++ integer_to_list(Port),
+    Transport = case UseSSL of
         true -> ranch_ssl;
         false -> ranch_tcp
     end,
-    Opts = case UseSSL of
-        true ->
-            {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
-            {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
-            {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
-            [
-                {port, Port},
-                {cacertfile, CaCertFile},
-                {certfile, CertFile},
-                {keyfile, KeyFile}
-            ];
-        false ->
-            [{port, Port}]
-    end,
-    {ok, _} = ranch:start_listener(ListenerID, ?NUMBER_OF_ACCEPTORS,
-        Protocol, Opts, tcp_mock_handler, [Port, Packet, HttpUpgradeMode]),
+    Opts = #{
+        num_acceptors => ?NUMBER_OF_ACCEPTORS,
+        socket_opts => lists:flatten([
+            {ip, any},
+            {port, Port},
+            case UseSSL of
+                true ->
+                    {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
+                    {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
+                    {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
+                    [
+                        {cacertfile, CaCertFile},
+                        {certfile, CertFile},
+                        {keyfile, KeyFile}
+                    ];
+                false ->
+                    []
+            end
+        ])
+    },
+    {ok, _} = ranch:start_listener(
+        ListenerId, Transport, Opts,
+        tcp_mock_handler, [Port, Packet, HttpUpgradeMode]
+    ),
     HistoryEnabled = case Type of history -> true; _ -> false end,
-    #endpoint{name = ListenerID, port = Port, use_ssl = UseSSL, history_enabled = HistoryEnabled}.
+    #endpoint{name = ListenerId, port = Port, use_ssl = UseSSL, history_enabled = HistoryEnabled}.
 
 
 %% @private

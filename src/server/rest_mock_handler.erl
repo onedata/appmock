@@ -40,9 +40,8 @@ init(Req, [ETSKey] = State) ->
                 cowboy_req:set_resp_header(HKey, HValue, CurrReq)
             end, Req3, Headers),
         cowboy_req:reply(Code, Req4)
-    catch T:M ->
+    catch T:M:Stacktrace ->
         {Port, Path} = ETSKey,
-        Stacktrace = erlang:get_stacktrace(),
         ?error("Error in ~p. Path: ~p. Port: ~p. ~p:~p.~nStacktrace: ~p",
             [?MODULE, Path, Port, T, M, Stacktrace]),
         Error = str_utils:format_bin("500 Internal server error - make sure that your description file does not " ++
