@@ -14,6 +14,7 @@
 -author("Lukasz Opiola").
 
 -include_lib("ctool/include/logging.hrl").
+-include_lib("ctool/include/http/headers.hrl").
 -include("appmock.hrl").
 
 %% Cowboy API
@@ -30,7 +31,7 @@
 %%--------------------------------------------------------------------
 -spec init(Req :: cowboy_req:req(), [ETSKey]) -> {ok, cowboy_req:req(), [ETSKey]} when ETSKey :: {Port :: integer(), Path :: binary()}.
 init(Req, [ETSKey] = State) ->
-    Req2 = cowboy_req:set_resp_header(<<"connection">>, <<"close">>, Req),
+    Req2 = cowboy_req:set_resp_header(?HDR_CONNECTION, <<"close">>, Req),
 
     NewReq = try
         {ok, {Code, Headers, Body}} = rest_mock_server:produce_response(Req2, ETSKey),
@@ -47,7 +48,7 @@ init(Req, [ETSKey] = State) ->
         Error = str_utils:format_bin("500 Internal server error - make sure that your description file does not " ++
         "contain errors.~n-----------------~nType:       ~p~nMessage:    ~p~nStacktrace: ~p", [T, M, Stacktrace]),
         ErrorReq2 = cowboy_req:set_resp_body(Error, Req2),
-        ErrorReq3 = cowboy_req:set_resp_header(<<"content-type">>, <<"text/plain">>, ErrorReq2),
+        ErrorReq3 = cowboy_req:set_resp_header(?HDR_CONTENT_TYPE, <<"text/plain">>, ErrorReq2),
         cowboy_req:reply(500, ErrorReq3)
     end,
     {ok, NewReq, State}.

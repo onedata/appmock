@@ -14,6 +14,7 @@
 -author("Lukasz Opiola").
 
 -include_lib("ctool/include/logging.hrl").
+-include_lib("ctool/include/http/headers.hrl").
 -include("appmock_internal.hrl").
 
 %% Cowboy API
@@ -32,7 +33,7 @@
 init(Req, State) ->
     % The request state is it's path, so we can easily create cases for handle function.
     [Path] = State,
-    Req2 = cowboy_req:set_resp_header(<<"connection">>, <<"close">>, Req),
+    Req2 = cowboy_req:set_resp_header(?HDR_CONNECTION, <<"close">>, Req),
     % This is a REST endpoint, close connection after every request.
     Req3 =
         try
@@ -76,7 +77,7 @@ handle_request(?NAGIOS_ENPOINT, Req) ->
     Reply = io_lib:format("~s", [lists:flatten(Export)]),
 
     % Send the reply
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/xml">>}, Reply, Req);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/xml">>}, Reply, Req);
 
 handle_request(?REST_ENDPOINT_REQUEST_COUNT_PATH, Req) ->
     % Unpack the request, getting port and path
@@ -91,7 +92,7 @@ handle_request(?REST_ENDPOINT_REQUEST_COUNT_PATH, Req) ->
             ?REST_ENDPOINT_REQUEST_COUNT_PACK_ERROR_WRONG_ENDPOINT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?VERIFY_REST_HISTORY_PATH, Req) ->
     {ok, JSONBody, _} = cowboy_req:read_body(Req),
@@ -105,7 +106,7 @@ handle_request(?VERIFY_REST_HISTORY_PATH, Req) ->
             ?VERIFY_REST_HISTORY_PACK_ERROR(ActualHistory)
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?RESET_REST_HISTORY_PATH, Req) ->
     ReplyTerm = case remote_control_server:reset_rest_mock_history() of
@@ -113,7 +114,7 @@ handle_request(?RESET_REST_HISTORY_PATH, Req) ->
             ?TRUE_RESULT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -128,7 +129,7 @@ handle_request(?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_SPECIFIC_MESSAGE_COUNT_PACK_ERROR_WRONG_ENDPOINT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_ALL_MESSAGES_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -140,7 +141,7 @@ handle_request(?TCP_SERVER_ALL_MESSAGES_COUNT_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_ALL_MESSAGES_COUNT_PACK_ERROR_WRONG_ENDPOINT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_SEND_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -159,7 +160,7 @@ handle_request(?TCP_SERVER_SEND_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_SEND_PACK_WRONG_ENDPOINT_ERROR
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_HISTORY_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -173,7 +174,7 @@ handle_request(?TCP_SERVER_HISTORY_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_HISTORY_PACK_ERROR_COUNTER_MODE
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?RESET_TCP_SERVER_HISTORY_PATH, Req) ->
     ReplyTerm = case remote_control_server:reset_tcp_mock_history() of
@@ -181,7 +182,7 @@ handle_request(?RESET_TCP_SERVER_HISTORY_PATH, Req) ->
             ?TRUE_RESULT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, Req) ->
     PortBin = req:binding(port, Req),
@@ -193,7 +194,7 @@ handle_request(?TCP_SERVER_CONNECTION_COUNT_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_CONNECTION_COUNT_PACK_ERROR_WRONG_ENDPOINT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2);
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2);
 
 handle_request(?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE, Req) ->
     Port = binary_to_integer(req:binding(port, Req)),
@@ -205,4 +206,4 @@ handle_request(?TCP_SERVER_SIMULATE_DOWNTIME_COWBOY_ROUTE, Req) ->
             ?TCP_SERVER_SIMULATE_DOWNTIME_PACK_ERROR_WRONG_ENDPOINT
     end,
     Req2 = cowboy_req:set_resp_body(json_utils:encode(ReplyTerm), Req),
-    cowboy_req:reply(200, #{<<"content-type">> => <<"application/json">>}, Req2).
+    cowboy_req:reply(200, #{?HDR_CONTENT_TYPE => <<"application/json">>}, Req2).
