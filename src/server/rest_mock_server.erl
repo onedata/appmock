@@ -19,6 +19,7 @@
 
 -include("appmock_internal.hrl").
 -include_lib("ctool/include/logging.hrl").
+-include_lib("ctool/include/http/headers.hrl").
 
 %% API
 -export([start_link/0, healthcheck/0]).
@@ -422,7 +423,7 @@ internal_produce_response(Req, ReqBody, ETSKey, #state{request_history = History
             [MockStateRec#rest_mock_state{state = NewMockState, counter = Counter + 1}]
         end, MockStatesDict),
     #rest_response{code = Code, body = Body, content_type = CType, headers = Headers} = Response,
-    AllHeaders = [{<<"content-type">>, CType}] ++ Headers,
+    AllHeaders = [{?HDR_CONTENT_TYPE, CType}] ++ Headers,
     {Port, Path} = ETSKey,
     ?info("Got request at :~p~s~nResponding~n  Code:    ~p~n  Headers: ~p~n  Body:    ~s", [Port, Path, Code, AllHeaders, Body]),
     {{Code, AllHeaders, Body}, ServerState#state{request_history = History ++ [ETSKey], mock_states = NewMockStatesDict}}.
