@@ -21,7 +21,7 @@ export ONEDATA_GIT_URL
 all: rel
 
 upgrade:
-	./rebar3 upgrade
+	./rebar3 upgrade --all
 
 compile:
 	./rebar3 compile
