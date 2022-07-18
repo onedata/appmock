@@ -8,3 +8,4 @@
 _build
 compile_commands.json
 rebar.lock.bak
+rebar3.crashdump
