@@ -489,14 +489,19 @@ start_listener(#tcp_server_mock{port = Port, ssl = UseSSL, packet = Packet,
             {port, Port},
             case UseSSL of
                 true ->
-                    {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
                     {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
                     {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
-                    [
-                        {cacertfile, CaCertFile},
+                    {ok, ChainFile} = application:get_env(?APP_NAME, chain_file),
+                    lists:flatten([
                         {certfile, CertFile},
-                        {keyfile, KeyFile}
-                    ];
+                        {keyfile, KeyFile},
+                        case filelib:is_regular(ChainFile) of
+                            true ->
+                                {cacertfile, ChainFile};
+                            _ ->
+                                []
+                        end
+                    ]);
                 false ->
                     []
             end
