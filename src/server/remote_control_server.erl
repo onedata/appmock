@@ -360,9 +360,9 @@ start_remote_control_listener() ->
         ]}
     ]),
     % Load certificates' paths from env
-    {ok, CaCertFile} = application:get_env(?APP_NAME, ca_cert_file),
     {ok, CertFile} = application:get_env(?APP_NAME, cert_file),
     {ok, KeyFile} = application:get_env(?APP_NAME, key_file),
+    {ok, ChainFile} = application:get_env(?APP_NAME, chain_file),
     % Start a https listener on given port
     ?info("Starting cowboy listener: ~p (~p)", [?REMOTE_CONTROL_LISTENER, RemoteControlPort]),
 
@@ -378,9 +378,9 @@ start_remote_control_listener() ->
             {ciphers, ssl_utils:safe_ciphers()},
             {next_protocols_advertised, [<<"http/1.1">>]},
             {alpn_preferred_protocols, [<<"http/1.1">>]},
-            case filelib:is_regular(CaCertFile) of
+            case filelib:is_regular(ChainFile) of
                 true ->
-                    {cacertfile, CaCertFile};
+                    {cacertfile, ChainFile};
                 _ ->
                     []
             end

@@ -33,9 +33,9 @@
         ]},
         {mod, {appmock_app, []}},
         {env, [
-            {ca_cert_file, "cacerts/ca.crt"},
-            {cert_file, "cacerts/server.crt"},
-            {key_file, "cacerts/server.key"},
+            {cert_file, "etc/certs/web_cert.pem"},
+            {key_file, "etc/certs/web_key.pem"},
+            {chain_file, "etc/certs/web_chain.pem"},
 
             {remote_control_port, 9999},
             {nagios_healthcheck_timeout, 1000},
