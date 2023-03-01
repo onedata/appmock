@@ -376,8 +376,8 @@ start_remote_control_listener() ->
             {keyfile, KeyFile},
             {certfile, CertFile},
             {ciphers, ssl_utils:safe_ciphers()},
-            {next_protocols_advertised, [<<"http/1.1">>]},
-            {alpn_preferred_protocols, [<<"http/1.1">>]},
+            {next_protocols_advertised, [<<"h2">>, <<"http/1.1">>]},
+            {alpn_preferred_protocols, [<<"h2">>, <<"http/1.1">>]},
             case filelib:is_regular(ChainFile) of
                 true ->
                     {cacertfile, ChainFile};
