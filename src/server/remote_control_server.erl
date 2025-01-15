@@ -259,9 +259,8 @@ handle_call(healthcheck, _From, State) ->
         timer:sleep(500),
 
         {reply, ok, State}
-    catch T:M ->
-        ?error_stacktrace("Error during ~p healthcheck- ~p:~p",
-            [?MODULE, T, M]),
+    catch Class:Reason:Stacktrace ->
+        ?error_exception("Error during healthcheck", Class, Reason, Stacktrace),
         {reply, error, State}
     end;
 

@@ -98,7 +98,7 @@ healthcheck() ->
             fun(#endpoint{port = Port, use_ssl = UseSSL}) ->
                 case UseSSL of
                     true ->
-                        {ok, Socket} = ssl:connect("127.0.0.1", Port, []),
+                        {ok, Socket} = ssl:connect("127.0.0.1", Port, [{verify, verify_none}]),
                         ssl:close(Socket);
                     false ->
                         {ok, Socket} = gen_tcp:connect("127.0.0.1", Port, []),
@@ -106,8 +106,8 @@ healthcheck() ->
                 end
             end, Endpoints),
         ok
-    catch T:M ->
-        ?error_stacktrace("Error during ~p healthcheck- ~p:~p", [?MODULE, T, M]),
+    catch Class:Reason:Stacktrace ->
+        ?error_exception("Error during healthcheck", Class, Reason, Stacktrace),
         error
     end.
 
