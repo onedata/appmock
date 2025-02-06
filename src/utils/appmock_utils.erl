@@ -34,7 +34,7 @@ load_description_module(FilePath) ->
     try
         {ok, TmpFileCopyPath} = create_tmp_copy_with_erl_extension(FilePath),
         FileName = filename:basename(TmpFileCopyPath),
-        {ok, ModuleName} = compile:file(TmpFileCopyPath),
+	    {ok, ModuleName} = compile:file(TmpFileCopyPath, [verbose, report_errors, report_warnings]),
         {ok, Bin} = file:read_file(filename:rootname(FileName) ++ ".beam"),
         erlang:load_module(ModuleName, Bin),
         cleanup_tmp_copy(FilePath, TmpFileCopyPath),
