@@ -166,15 +166,15 @@ handle_call(healthcheck, _From, #state{mock_states = MockStates} = State) ->
                     #rest_mock_state{response = #rest_response{code = Code}} ->
                         URL = str_utils:format_bin("https://127.0.0.1:~B~s",
                             [Port, Path]),
-                        {ok, Code, _, _} = http_client:get(URL);
+                        {ok, Code, _, _} = http_client:get(URL, #{}, <<>>, [{ssl_options, [{secure, false}]}]);
                     _ ->
                         ok
                 end
             end, MockStatesList),
 
         {reply, ok, State}
-    catch T:M ->
-        ?error_stacktrace("Error during ~p healthcheck- ~p:~p", [?MODULE, T, M]),
+    catch Class:Reason:Stacktrace ->
+        ?error_exception("Error during healthcheck", Class, Reason, Stacktrace),
         {reply, error, State}
     end;
 

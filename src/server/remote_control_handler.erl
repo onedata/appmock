@@ -38,9 +38,8 @@ init(Req, State) ->
     Req3 =
         try
             handle_request(Path, Req2)
-        catch T:M ->
-            ?error_stacktrace("Error in remote_control_handler. Path: ~p. ~p:~p.",
-                [Path, T, M]),
+        catch Class:Reason:Stacktrace ->
+            ?error_exception(?autoformat(Path), Class, Reason, Stacktrace),
             cowboy_req:reply(500, Req2)
         end,
     {ok, Req3, State}.
